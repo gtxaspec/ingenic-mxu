@@ -1,0 +1,9 @@
+# Binaries
+mxu_probe
+msa_probe
+read_cp0
+test_shim
+*.o
+*.dis
+all_intrinsics_v2.c
+all_intrinsics_test.c
