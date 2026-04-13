@@ -11,3 +11,4 @@ test_all_mxu2
 test_dsp
 test_shufv
 test_detect
+xb3_*
