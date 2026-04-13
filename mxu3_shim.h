@@ -29,6 +29,18 @@
  *   COP2: (18<<26)|(minor<<21)|(vrp<<16)|(vrs<<11)|(vrd<<6)|funct
  *   LUQ:  (28<<26)|(base<<21)|(1<<11)|(vrd_qn<<6)|0x13  (auto-incr base+=16)
  *   SUQ:  (28<<26)|(base<<21)|(vrp_qn<<11)|0x57          (auto-incr base+=16)
+ *
+ * A1 SILICON BUG (from Ingenic GCC mips-mxu3-fix-bug-for-a1.md):
+ *   A1 revision XBurst2 silicon has a data coherency bug affecting LUW and
+ *   LUD loads (NOT LUQ/LUO). A sync instruction must be placed before each
+ *   LUW/LUD to prevent data corruption. This shim uses LUQ exclusively for
+ *   its inline functions, so they are safe on all revisions. If you use the
+ *   raw MXU3_LUW/MXU3_LUD encoding constants on A1 silicon, prepend a sync.
+ *
+ * DEVICE DIFFERENCES (T40 vs T41):
+ *   T40: MXU3.0 — has NNA, no MXU3.1 shuffle variants (gshufwb_1/2, gshufvb SIGILL)
+ *   T41: MXU3.1 — has new shuffles, NNA may not be enabled (nnrwr etc. SIGILL)
+ *   T40: MXU3 on CPU0 only without kernel patch (see t40-mxu3-fix.patch)
  */
 
 #ifndef MXU3_SHIM_H
@@ -1385,9 +1397,12 @@ static inline mxu3_v16i32 mxu3_gshufvb(mxu3_v16i32 a, mxu3_v16i32 b) {
 /* ============================================================ */
 /* Load / Store Encoding Constants */
 /* ============================================================ */
+/* A1 silicon workaround: place _MXU3_SYNC before MXU3_LUW/LUD on A1 devices */
+#define _MXU3_SYNC "sync\n\t"
+
 /* Basic load/store (auto-increment base register) */
-#define MXU3_LUW  0x70000012  /* luw vrd[n], base — load word (32-bit) */
-#define MXU3_LUD  0x70000013  /* lud vrd[n], base — load double (64-bit) */
+#define MXU3_LUW  0x70000012  /* luw vrd[n], base — load word (32-bit) — NEEDS SYNC ON A1 */
+#define MXU3_LUD  0x70000013  /* lud vrd[n], base — load double (64-bit) — NEEDS SYNC ON A1 */
 #define MXU3_LUQ  0x70000813  /* luq vrd[n], base — load quad (128-bit) */
 #define MXU3_LUO  0x70001813  /* luo vrd[n], base — load oct (256-bit) */
 #define MXU3_SUW  0x70000016  /* suw vrp[n], base — store word */
