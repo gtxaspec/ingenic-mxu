@@ -8,10 +8,10 @@ Both **T20** (XBurst1 V0.1) and **T31** (XBurst1 V0.0) support **full MXU2 VPR a
 
 ## Device Inventory
 
-| Device | IP | SoC | XBurst Gen |
-|--------|----|-----|-----------|
-| bull   | 10.25.1.153 | T20 | XBurst1 (V0.1) |
-| swan   | 10.25.1.155 | T31 | XBurst1 (V0.0) |
+| Device | SoC | XBurst Gen |
+|--------|-----|-----------|
+| bull   | T20 | XBurst1 (V0.1) |
+| swan   | T31 | XBurst1 (V0.0) |
 
 ---
 
