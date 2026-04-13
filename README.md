@@ -362,4 +362,4 @@ Copy to device and run:
 
 ## License
 
-MIT
+GPL-2.0 -- see [LICENSE](LICENSE)
