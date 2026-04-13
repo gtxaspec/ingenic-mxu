@@ -468,6 +468,171 @@ static void sweep_all(void) {
 
     /* Byte shift immediate */
     SWEEP_SHIMM("bshli", mxu3_bshli); SWEEP_SHIMM("bshri", mxu3_bshri);
+
+    /* === NEW: Byte immediate === */
+    SWEEP_SHIMM("andib", mxu3_andib); SWEEP_SHIMM("orib", mxu3_orib);
+    SWEEP_SHIMM("xorib", mxu3_xorib);
+
+    /* === NEW: Extract with position === */
+    SWEEP_UNIOP("extuwll", mxu3_extuwll); SWEEP_UNIOP("extuwlh", mxu3_extuwlh);
+    SWEEP_UNIOP("extuwhl", mxu3_extuwhl); SWEEP_UNIOP("extuwhh", mxu3_extuwhh);
+    SWEEP_UNIOP("extudll", mxu3_extudll); SWEEP_UNIOP("extudlh", mxu3_extudlh);
+    SWEEP_UNIOP("extudhl", mxu3_extudhl); SWEEP_UNIOP("extudhh", mxu3_extudhh);
+    SWEEP_UNIOP("extuqll", mxu3_extuqll); SWEEP_UNIOP("extuqlh", mxu3_extuqlh);
+    SWEEP_UNIOP("extuqhl", mxu3_extuqhl); SWEEP_UNIOP("extuqhh", mxu3_extuqhh);
+    SWEEP_UNIOP("extuoll", mxu3_extuoll); SWEEP_UNIOP("extuolh", mxu3_extuolh);
+    SWEEP_UNIOP("extuohl", mxu3_extuohl); SWEEP_UNIOP("extuohh", mxu3_extuohh);
+
+    /* === NEW: Generalized shuffle === */
+    { TRY_BEGIN()
+        mxu3_v16i32 _a = make_splat_w(1), _b = make_splat_w(2);
+        mxu3_v16i32 _r = mxu3_gshufw(_a, _b, 0);
+        (void)_r; pass_count++;
+    TRY_END("gshufw"); }
+    /* MXU3.1 variants — may SIGILL on MXU3.0 */
+    SWEEP_BINOP("gshufwb_1", mxu3_gshufwb_1);
+    SWEEP_BINOP("gshufwb_2", mxu3_gshufwb_2);
+    SWEEP_BINOP("gshufvb", mxu3_gshufvb);
+}
+
+/* ================================================================ */
+/* Raw encoding SIGILL sweep — test .word encodings directly         */
+/* ================================================================ */
+
+/* Helper: emit a single .word in a SIGILL-guarded block */
+#define SWEEP_RAW(label, enc) do { \
+    TRY_BEGIN() \
+        __asm__ __volatile__ ( \
+            ".set push\n\t.set noreorder\n\t.set noat\n\t" \
+            _MXU3_WORD(enc) \
+            ".set pop\n\t" ::: "memory" \
+        ); pass_count++; \
+    TRY_END(label); \
+} while(0)
+
+/* VSR ops need VPR data loaded first to avoid undefined behavior */
+#define SWEEP_VSR(label, enc) do { \
+    TRY_BEGIN() \
+        mxu3_v16i32 _z __attribute__((aligned(64))) = {}; \
+        __asm__ __volatile__ ( \
+            ".set push\n\t.set noreorder\n\t.set noat\n\t" \
+            "move  $t0, %[pz]\n\t" \
+            _MXU3_WORD(_MXU3_LUQ(8, 0)) _MXU3_WORD(_MXU3_LUQ(8, 1)) \
+            _MXU3_WORD(_MXU3_LUQ(8, 2)) _MXU3_WORD(_MXU3_LUQ(8, 3)) \
+            "move  $t0, %[pz]\n\t" \
+            _MXU3_WORD(_MXU3_LUQ(8, 4)) _MXU3_WORD(_MXU3_LUQ(8, 5)) \
+            _MXU3_WORD(_MXU3_LUQ(8, 6)) _MXU3_WORD(_MXU3_LUQ(8, 7)) \
+            _MXU3_WORD(enc) \
+            ".set pop\n\t" \
+            : : [pz] "r"(&_z) : "$t0", "memory" \
+        ); pass_count++; \
+    TRY_END(label); \
+} while(0)
+
+static void sweep_raw_ops(void) {
+    printf("\n=== Raw Encoding SIGILL Sweep ===\n");
+
+    /* VSR MAC ops (need VPR0/1 loaded) */
+    SWEEP_VSR("mlaw",    MXU3_MLAW);
+    SWEEP_VSR("mlsw",    MXU3_MLSW);
+    SWEEP_VSR("smlahe",  MXU3_SMLAHE);
+    SWEEP_VSR("smlaho",  MXU3_SMLAHO);
+    SWEEP_VSR("smlshe",  MXU3_SMLSHE);
+    SWEEP_VSR("smlsho",  MXU3_SMLSHO);
+    SWEEP_VSR("wsmlahl", MXU3_WSMLAHL);
+    SWEEP_VSR("wsmlahh", MXU3_WSMLAHH);
+    SWEEP_VSR("wsmlshl", MXU3_WSMLSHL);
+    SWEEP_VSR("wsmlshh", MXU3_WSMLSHH);
+
+    /* VSR reduction */
+    SWEEP_VSR("tocb", MXU3_TOCB);
+    SWEEP_VSR("toch", MXU3_TOCH);
+    SWEEP_VSR("tocw", MXU3_TOCW);
+    SWEEP_RAW("sumz", MXU3_SUMZ);
+
+    /* VSR transfer */
+    SWEEP_RAW("mtsum",  MXU3_MTSUM);
+    SWEEP_RAW("mfsum",  MXU3_MFSUM);
+    SWEEP_RAW("mfsumz", MXU3_MFSUMZ);
+    SWEEP_VSR("mxsum",  MXU3_MXSUM);
+
+    /* Register transfer */
+    SWEEP_RAW("mfcpuw", MXU3_MFCPUW);
+    SWEEP_RAW("mtcpuw", MXU3_MTCPUW);
+    SWEEP_RAW("cfcmxu", MXU3_CFCMXU);
+    SWEEP_RAW("ctcmxu", MXU3_CTCMXU);
+
+    /* Load immediate */
+    SWEEP_RAW("lih",  MXU3_LIH);
+    SWEEP_RAW("liw",  MXU3_LIW);
+    SWEEP_RAW("liwh", MXU3_LIWH);
+    SWEEP_RAW("liwr", MXU3_LIWR);
+
+    /* VWR ops */
+    SWEEP_RAW("addiw", MXU3_ADDIW);
+    SWEEP_RAW("addrw", MXU3_ADDRW);
+
+    /* NNA ops */
+    SWEEP_RAW("nnrwr", MXU3_NNRWR);
+    SWEEP_RAW("nnrrd", MXU3_NNRRD);
+    SWEEP_RAW("nndwr", MXU3_NNDWR);
+    SWEEP_RAW("nndrd", MXU3_NNDRD);
+    SWEEP_RAW("nncmd", MXU3_NNCMD);
+    SWEEP_RAW("nnmac", MXU3_NNMAC);
+
+    /* SR sum (sample — test first and last of each type) */
+    SWEEP_VSR("sr1sum2bi",  MXU3_SR1SUM2BI);
+    SWEEP_VSR("sr16sum2bi", MXU3_SR16SUM2BI);
+    SWEEP_VSR("sr1sum4bi",  MXU3_SR1SUM4BI);
+    SWEEP_VSR("sr1sumub",   MXU3_SR1SUMUB);
+    SWEEP_VSR("sr16sumub",  MXU3_SR16SUMUB);
+    SWEEP_VSR("sr1sumuh",   MXU3_SR1SUMUH);
+    SWEEP_VSR("sr1sumsb",   MXU3_SR1SUMSB);
+    SWEEP_VSR("sr1sumsh",   MXU3_SR1SUMSH);
+    SWEEP_VSR("sr1sumw",    MXU3_SR1SUMW);
+    SWEEP_VSR("sr16sumw",   MXU3_SR16SUMW);
+
+    /* SR MAC (sample) */
+    SWEEP_VSR("sr1mac2bi",  MXU3_SR1MAC2BI);
+    SWEEP_VSR("sr16mac2bi", MXU3_SR16MAC2BI);
+    SWEEP_VSR("sr1macuub",  MXU3_SR1MACUUB);
+    SWEEP_VSR("sr1macssb",  MXU3_SR1MACSSB);
+    SWEEP_VSR("sr1macssh",  MXU3_SR1MACSSH);
+
+    /* S MAC (sample) */
+    SWEEP_VSR("s1macuub",  MXU3_S1MACUUB);
+    SWEEP_VSR("s16macuub", MXU3_S16MACUUB);
+    SWEEP_VSR("s1macssb",  MXU3_S1MACSSB);
+    SWEEP_VSR("s1macssh",  MXU3_S1MACSSH);
+
+    /* Basic load/store (test with valid addresses) */
+    {
+        int buf[16] __attribute__((aligned(64))) = {0};
+        TRY_BEGIN()
+            __asm__ __volatile__ (
+                ".set push\n\t.set noreorder\n\t.set noat\n\t"
+                "move  $t0, %[p]\n\t"
+                _MXU3_WORD(MXU3_LUW | (8<<21))
+                _MXU3_WORD(MXU3_SUW | (8<<21))
+                _MXU3_WORD(MXU3_LUD | (8<<21))
+                _MXU3_WORD(MXU3_SUD | (8<<21))
+                _MXU3_WORD(MXU3_LUQ | (8<<21))
+                _MXU3_WORD(MXU3_SUQ | (8<<21))
+                _MXU3_WORD(MXU3_LUO | (8<<21))
+                _MXU3_WORD(MXU3_SUO | (8<<21))
+                ".set pop\n\t"
+                : : [p] "r"(buf) : "$t0", "memory"
+            ); pass_count += 8;
+        TRY_END("load/store basic");
+    }
+
+    /* Positional ops (encoding-only, basic validation) */
+    SWEEP_RAW("repib", MXU3_REPIB);
+    SWEEP_RAW("repiw", MXU3_REPIW);
+    SWEEP_RAW("movw",  MXU3_MOVW);
+    SWEEP_RAW("cmvw",  MXU3_CMVW);
+    SWEEP_RAW("gt2w",  MXU3_GT2W);
+    SWEEP_RAW("gt2d",  MXU3_GT2D);
 }
 
 /* ================================================================ */
@@ -492,8 +657,11 @@ int main(void) {
     test_shift();
     test_float();
 
-    /* SIGILL sweep */
+    /* SIGILL sweep — inline functions */
     sweep_all();
+
+    /* SIGILL sweep — raw encoding ops */
+    sweep_raw_ops();
 
     printf("\n===========================\n");
     printf("PASS: %d  FAIL: %d  SIGILL: %d\n", pass_count, fail_count, sigill_count);
