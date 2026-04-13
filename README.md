@@ -27,6 +27,8 @@ When compiled with the Ingenic toolchain (`-mmxu2`), the shim automatically dele
 #include "mxu2_shim.h"
 
 void vector_add(const int *a, const int *b, int *result, int count) {
+    if (!mxu2_available()) return;  // runtime detection
+
     for (int i = 0; i < count; i += 4) {
         mxu2_v4i32 va = MXU2_LOAD(&a[i]);
         mxu2_v4i32 vb = MXU2_LOAD(&b[i]);
@@ -61,6 +63,18 @@ Each shim operation is an opaque inline asm block. The compiler can't keep value
 | Shim (per-operation) | ~72 | Each op loads from stack, computes, stores back to stack |
 
 The overhead is roughly **5-10x** for compute-bound chains. For simple load-compute-store patterns with no chaining (image filters, bulk transforms), the penalty is smaller since you'd be loading/storing anyway.
+
+### Runtime detection
+
+`mxu2_available()` probes the CPU at runtime using SIGILL trapping. Safe to call on any MIPS CPU. Result is cached after the first call.
+
+```c
+if (mxu2_available()) {
+    // MXU2 SIMD path
+} else {
+    // scalar fallback
+}
+```
 
 ### When it doesn't matter
 

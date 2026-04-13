@@ -268,6 +268,62 @@ static __inline__ void mxu2_store(void *ptr, mxu2_v4i32 v)
 #define MXU2_LOAD(ptr)      mxu2_load(ptr)
 #define MXU2_STORE(ptr, v)  mxu2_store((ptr), (v))
 
+/* --- Runtime detection --- */
+
+/*
+ * mxu2_available() - test whether MXU2 works on this CPU
+ *
+ * Returns 1 if MXU2 instructions execute successfully, 0 if SIGILL.
+ * Uses SIGILL trapping so it's safe to call on any MIPS CPU.
+ * Call once at startup before using any MXU2 operations.
+ * Result is cached after the first call.
+ *
+ * Usage:
+ *   if (mxu2_available()) {
+ *       // use MXU2 path
+ *   } else {
+ *       // scalar fallback
+ *   }
+ */
+#include <signal.h>
+#include <setjmp.h>
+
+static sigjmp_buf _mxu2_probe_jmp;
+static void _mxu2_probe_sigill(int s) { (void)s; siglongjmp(_mxu2_probe_jmp, 1); }
+
+static __inline__ int mxu2_available(void)
+{
+    static int cached = -1;
+    if (cached >= 0) return cached;
+
+    struct sigaction sa, old;
+    __builtin_memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = _mxu2_probe_sigill;
+    sigaction(SIGILL, &sa, &old);
+
+    if (sigsetjmp(_mxu2_probe_jmp, 1) == 0) {
+        int buf[4] __attribute__((aligned(16))) = {0x12345678, 0, 0, 0};
+        int out[4] __attribute__((aligned(16))) = {0};
+        __asm__ __volatile__ (
+            ".set push\n\t"
+            ".set noreorder\n\t"
+            ".set noat\n\t"
+            "move  $t0, %[b]\n\t"
+            _MXU2_WORD(_MXU2_W_LU1Q_VPR0)
+            "move  $t0, %[o]\n\t"
+            _MXU2_WORD(_MXU2_SU1Q(8, 0, 0))
+            ".set pop\n\t"
+            : : [b] "r"(buf), [o] "r"(out) : "$t0", "memory"
+        );
+        cached = (out[0] == 0x12345678);
+    } else {
+        cached = 0;
+    }
+
+    sigaction(SIGILL, &old, (void *)0);
+    return cached;
+}
+
 /* --- 128-bit logic --- */
 
 static __inline__ mxu2_v16i8 mxu2_andv(mxu2_v16i8 a, mxu2_v16i8 b) {
