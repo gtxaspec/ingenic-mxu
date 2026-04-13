@@ -580,32 +580,64 @@ static void sweep_raw_ops(void) {
     SWEEP_RAW("nncmd", MXU3_NNCMD);
     SWEEP_RAW("nnmac", MXU3_NNMAC);
 
-    /* SR sum (sample — test first and last of each type) */
-    SWEEP_VSR("sr1sum2bi",  MXU3_SR1SUM2BI);
+    /* SR sum — ALL 35 ops */
+    SWEEP_VSR("sr1sum2bi",  MXU3_SR1SUM2BI);  SWEEP_VSR("sr2sum2bi",  MXU3_SR2SUM2BI);
+    SWEEP_VSR("sr4sum2bi",  MXU3_SR4SUM2BI);  SWEEP_VSR("sr8sum2bi",  MXU3_SR8SUM2BI);
     SWEEP_VSR("sr16sum2bi", MXU3_SR16SUM2BI);
-    SWEEP_VSR("sr1sum4bi",  MXU3_SR1SUM4BI);
-    SWEEP_VSR("sr1sumub",   MXU3_SR1SUMUB);
+    SWEEP_VSR("sr1sum4bi",  MXU3_SR1SUM4BI);  SWEEP_VSR("sr2sum4bi",  MXU3_SR2SUM4BI);
+    SWEEP_VSR("sr4sum4bi",  MXU3_SR4SUM4BI);  SWEEP_VSR("sr8sum4bi",  MXU3_SR8SUM4BI);
+    SWEEP_VSR("sr16sum4bi", MXU3_SR16SUM4BI);
+    SWEEP_VSR("sr1sumub",   MXU3_SR1SUMUB);   SWEEP_VSR("sr2sumub",   MXU3_SR2SUMUB);
+    SWEEP_VSR("sr4sumub",   MXU3_SR4SUMUB);   SWEEP_VSR("sr8sumub",   MXU3_SR8SUMUB);
     SWEEP_VSR("sr16sumub",  MXU3_SR16SUMUB);
-    SWEEP_VSR("sr1sumuh",   MXU3_SR1SUMUH);
-    SWEEP_VSR("sr1sumsb",   MXU3_SR1SUMSB);
-    SWEEP_VSR("sr1sumsh",   MXU3_SR1SUMSH);
-    SWEEP_VSR("sr1sumw",    MXU3_SR1SUMW);
+    SWEEP_VSR("sr1sumuh",   MXU3_SR1SUMUH);   SWEEP_VSR("sr2sumuh",   MXU3_SR2SUMUH);
+    SWEEP_VSR("sr4sumuh",   MXU3_SR4SUMUH);   SWEEP_VSR("sr8sumuh",   MXU3_SR8SUMUH);
+    SWEEP_VSR("sr16sumuh",  MXU3_SR16SUMUH);
+    SWEEP_VSR("sr1sumsb",   MXU3_SR1SUMSB);   SWEEP_VSR("sr2sumsb",   MXU3_SR2SUMSB);
+    SWEEP_VSR("sr4sumsb",   MXU3_SR4SUMSB);   SWEEP_VSR("sr8sumsb",   MXU3_SR8SUMSB);
+    SWEEP_VSR("sr16sumsb",  MXU3_SR16SUMSB);
+    SWEEP_VSR("sr1sumsh",   MXU3_SR1SUMSH);   SWEEP_VSR("sr2sumsh",   MXU3_SR2SUMSH);
+    SWEEP_VSR("sr4sumsh",   MXU3_SR4SUMSH);   SWEEP_VSR("sr8sumsh",   MXU3_SR8SUMSH);
+    SWEEP_VSR("sr16sumsh",  MXU3_SR16SUMSH);
+    SWEEP_VSR("sr1sumw",    MXU3_SR1SUMW);    SWEEP_VSR("sr2sumw",    MXU3_SR2SUMW);
+    SWEEP_VSR("sr4sumw",    MXU3_SR4SUMW);    SWEEP_VSR("sr8sumw",    MXU3_SR8SUMW);
     SWEEP_VSR("sr16sumw",   MXU3_SR16SUMW);
 
-    /* SR MAC (sample) */
-    SWEEP_VSR("sr1mac2bi",  MXU3_SR1MAC2BI);
+    /* SR MAC — ALL 30 ops */
+    SWEEP_VSR("sr1mac2bi",  MXU3_SR1MAC2BI);  SWEEP_VSR("sr2mac2bi",  MXU3_SR2MAC2BI);
+    SWEEP_VSR("sr4mac2bi",  MXU3_SR4MAC2BI);  SWEEP_VSR("sr8mac2bi",  MXU3_SR8MAC2BI);
     SWEEP_VSR("sr16mac2bi", MXU3_SR16MAC2BI);
-    SWEEP_VSR("sr1macuub",  MXU3_SR1MACUUB);
-    SWEEP_VSR("sr1macssb",  MXU3_SR1MACSSB);
-    SWEEP_VSR("sr1macssh",  MXU3_SR1MACSSH);
+    SWEEP_VSR("sr1mac4bi",  MXU3_SR1MAC4BI);  SWEEP_VSR("sr2mac4bi",  MXU3_SR2MAC4BI);
+    SWEEP_VSR("sr4mac4bi",  MXU3_SR4MAC4BI);  SWEEP_VSR("sr8mac4bi",  MXU3_SR8MAC4BI);
+    SWEEP_VSR("sr16mac4bi", MXU3_SR16MAC4BI);
+    SWEEP_VSR("sr1macuub",  MXU3_SR1MACUUB);  SWEEP_VSR("sr2macuub",  MXU3_SR2MACUUB);
+    SWEEP_VSR("sr4macuub",  MXU3_SR4MACUUB);  SWEEP_VSR("sr8macuub",  MXU3_SR8MACUUB);
+    SWEEP_VSR("sr16macuub", MXU3_SR16MACUUB);
+    SWEEP_VSR("sr1macsub",  MXU3_SR1MACSUB);  SWEEP_VSR("sr2macsub",  MXU3_SR2MACSUB);
+    SWEEP_VSR("sr4macsub",  MXU3_SR4MACSUB);  SWEEP_VSR("sr8macsub",  MXU3_SR8MACSUB);
+    SWEEP_VSR("sr16macsub", MXU3_SR16MACSUB);
+    SWEEP_VSR("sr1macssb",  MXU3_SR1MACSSB);  SWEEP_VSR("sr2macssb",  MXU3_SR2MACSSB);
+    SWEEP_VSR("sr4macssb",  MXU3_SR4MACSSB);  SWEEP_VSR("sr8macssb",  MXU3_SR8MACSSB);
+    SWEEP_VSR("sr16macssb", MXU3_SR16MACSSB);
+    SWEEP_VSR("sr1macssh",  MXU3_SR1MACSSH);  SWEEP_VSR("sr2macssh",  MXU3_SR2MACSSH);
+    SWEEP_VSR("sr4macssh",  MXU3_SR4MACSSH);  SWEEP_VSR("sr8macssh",  MXU3_SR8MACSSH);
+    SWEEP_VSR("sr16macssh", MXU3_SR16MACSSH);
 
-    /* S MAC (sample) */
-    SWEEP_VSR("s1macuub",  MXU3_S1MACUUB);
+    /* S MAC — ALL 20 ops */
+    SWEEP_VSR("s1macuub",  MXU3_S1MACUUB);   SWEEP_VSR("s2macuub",  MXU3_S2MACUUB);
+    SWEEP_VSR("s4macuub",  MXU3_S4MACUUB);   SWEEP_VSR("s8macuub",  MXU3_S8MACUUB);
     SWEEP_VSR("s16macuub", MXU3_S16MACUUB);
-    SWEEP_VSR("s1macssb",  MXU3_S1MACSSB);
-    SWEEP_VSR("s1macssh",  MXU3_S1MACSSH);
+    SWEEP_VSR("s1macsub",  MXU3_S1MACSUB);   SWEEP_VSR("s2macsub",  MXU3_S2MACSUB);
+    SWEEP_VSR("s4macsub",  MXU3_S4MACSUB);   SWEEP_VSR("s8macsub",  MXU3_S8MACSUB);
+    SWEEP_VSR("s16macsub", MXU3_S16MACSUB);
+    SWEEP_VSR("s1macssb",  MXU3_S1MACSSB);   SWEEP_VSR("s2macssb",  MXU3_S2MACSSB);
+    SWEEP_VSR("s4macssb",  MXU3_S4MACSSB);   SWEEP_VSR("s8macssb",  MXU3_S8MACSSB);
+    SWEEP_VSR("s16macssb", MXU3_S16MACSSB);
+    SWEEP_VSR("s1macssh",  MXU3_S1MACSSH);   SWEEP_VSR("s2macssh",  MXU3_S2MACSSH);
+    SWEEP_VSR("s4macssh",  MXU3_S4MACSSH);   SWEEP_VSR("s8macssh",  MXU3_S8MACSSH);
+    SWEEP_VSR("s16macssh", MXU3_S16MACSSH);
 
-    /* Basic load/store (test with valid addresses) */
+    /* Basic load/store — all 8 widths */
     {
         int buf[16] __attribute__((aligned(64))) = {0};
         TRY_BEGIN()
@@ -625,14 +657,79 @@ static void sweep_raw_ops(void) {
             ); pass_count += 8;
         TRY_END("load/store basic");
     }
+    /* Offset-addressed load/store */
+    {
+        int buf[16] __attribute__((aligned(64))) = {0};
+        TRY_BEGIN()
+            __asm__ __volatile__ (
+                ".set push\n\t.set noreorder\n\t.set noat\n\t"
+                "move  $t0, %[p]\n\t"
+                _MXU3_WORD(MXU3_LAW | (8<<21))
+                _MXU3_WORD(MXU3_SAW | (8<<21))
+                _MXU3_WORD(MXU3_LAD | (8<<21))
+                _MXU3_WORD(MXU3_SAD | (8<<21))
+                _MXU3_WORD(MXU3_LAQ | (8<<21))
+                _MXU3_WORD(MXU3_SAQ | (8<<21))
+                _MXU3_WORD(MXU3_LAO | (8<<21))
+                _MXU3_WORD(MXU3_SAO | (8<<21))
+                ".set pop\n\t"
+                : : [p] "r"(buf) : "$t0", "memory"
+            ); pass_count += 8;
+        TRY_END("load/store offset");
+    }
+    /* Strided loads (sample each stride family) */
+    {
+        int buf[16] __attribute__((aligned(64))) = {0};
+        TRY_BEGIN()
+            __asm__ __volatile__ (
+                ".set push\n\t.set noreorder\n\t.set noat\n\t"
+                "move  $t0, %[p]\n\t"
+                _MXU3_WORD(MXU3_LUW2B | (8<<21))
+                _MXU3_WORD(MXU3_LUW4B | (8<<21))
+                _MXU3_WORD(MXU3_LUW8B | (8<<21))
+                _MXU3_WORD(MXU3_LUW16B | (8<<21))
+                _MXU3_WORD(MXU3_LUD2B | (8<<21))
+                _MXU3_WORD(MXU3_LUD4B | (8<<21))
+                _MXU3_WORD(MXU3_LUQ2B | (8<<21))
+                _MXU3_WORD(MXU3_LUQ4B | (8<<21))
+                _MXU3_WORD(MXU3_LUO2B | (8<<21))
+                ".set pop\n\t"
+                : : [p] "r"(buf) : "$t0", "memory"
+            ); pass_count += 9;
+        TRY_END("strided loads");
+    }
+    /* Strided stores */
+    {
+        int buf[16] __attribute__((aligned(64))) = {0};
+        TRY_BEGIN()
+            __asm__ __volatile__ (
+                ".set push\n\t.set noreorder\n\t.set noat\n\t"
+                "move  $t0, %[p]\n\t"
+                _MXU3_WORD(MXU3_SUD2W | (8<<21))
+                _MXU3_WORD(MXU3_SUQ2W | (8<<21))
+                _MXU3_WORD(MXU3_SUO2W | (8<<21))
+                ".set pop\n\t"
+                : : [p] "r"(buf) : "$t0", "memory"
+            ); pass_count += 3;
+        TRY_END("strided stores");
+    }
 
-    /* Positional ops (encoding-only, basic validation) */
-    SWEEP_RAW("repib", MXU3_REPIB);
-    SWEEP_RAW("repiw", MXU3_REPIW);
-    SWEEP_RAW("movw",  MXU3_MOVW);
+    /* Positional ops — ALL */
+    SWEEP_RAW("repib", MXU3_REPIB);  SWEEP_RAW("repih", MXU3_REPIH);
+    SWEEP_RAW("repiw", MXU3_REPIW);  SWEEP_RAW("repid", MXU3_REPID);
+    SWEEP_RAW("repiq", MXU3_REPIQ);  SWEEP_RAW("repio", MXU3_REPIO);
+    SWEEP_RAW("movw",  MXU3_MOVW);   SWEEP_RAW("movd",  MXU3_MOVD);
+    SWEEP_RAW("movq",  MXU3_MOVQ);   SWEEP_RAW("movo",  MXU3_MOVO);
     SWEEP_RAW("cmvw",  MXU3_CMVW);
-    SWEEP_RAW("gt2w",  MXU3_GT2W);
-    SWEEP_RAW("gt2d",  MXU3_GT2D);
+    SWEEP_RAW("gt2w",  MXU3_GT2W);   SWEEP_RAW("gt4w",  MXU3_GT4W);
+    SWEEP_RAW("gt8w",  MXU3_GT8W);   SWEEP_RAW("gt2d",  MXU3_GT2D);
+    SWEEP_RAW("gt4d",  MXU3_GT4D);   SWEEP_RAW("gt2q",  MXU3_GT2Q);
+
+    /* Branch ops */
+    SWEEP_RAW("bnezb", MXU3_BNEZB);  SWEEP_RAW("bnezh", MXU3_BNEZH);
+    SWEEP_RAW("bnezw", MXU3_BNEZW);  SWEEP_RAW("bnezv", MXU3_BNEZV);
+    SWEEP_RAW("beqzb", MXU3_BEQZB);  SWEEP_RAW("beqzh", MXU3_BEQZH);
+    SWEEP_RAW("beqzw", MXU3_BEQZW);  SWEEP_RAW("beqzv", MXU3_BEQZV);
 }
 
 /* ================================================================ */
