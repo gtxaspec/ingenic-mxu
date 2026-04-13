@@ -1,4 +1,5 @@
 #include "mxu2_dsp.h"
+void test_stereo(void);
 #include <stdio.h>
 #include <string.h>
 
@@ -64,5 +65,31 @@ int main(void) {
     (qacc[0] > 8000 && qacc[0] < 8400) ? pass++ : fail++;
 
     printf("\n%d PASS, %d FAIL\n", pass, fail);
+    test_stereo();
     return fail;
+}
+
+void test_stereo(void) {
+    short L[4] __attribute__((aligned(16))) = {10, 20, 30, 40};
+    short R[4] __attribute__((aligned(16))) = {11, 21, 31, 41};
+    short stereo[8] __attribute__((aligned(16))) = {0};
+    short L2[4] __attribute__((aligned(16))) = {0};
+    short R2[4] __attribute__((aligned(16))) = {0};
+
+    mxu2_interleave_h(L, R, stereo);
+    int ok = 1;
+    for (int i = 0; i < 4; i++) {
+        if (stereo[2*i] != L[i] || stereo[2*i+1] != R[i]) ok = 0;
+    }
+    printf("interleave:   ");
+    for (int i = 0; i < 8; i++) printf("%d ", stereo[i]);
+    printf("-> %s\n", ok ? "PASS" : "FAIL");
+
+    mxu2_deinterleave_h(stereo, L2, R2);
+    int ok2 = (memcmp(L, L2, 8) == 0 && memcmp(R, R2, 8) == 0);
+    printf("deinterleave: L=");
+    for (int i = 0; i < 4; i++) printf("%d ", L2[i]);
+    printf("R=");
+    for (int i = 0; i < 4; i++) printf("%d ", R2[i]);
+    printf("-> %s\n", ok2 ? "PASS" : "FAIL");
 }
