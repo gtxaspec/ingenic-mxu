@@ -1,0 +1,49 @@
+diff --git a/arch/mips/kernel/traps.c b/arch/mips/kernel/traps.c
+index 66fb79f71..0eb84474f 100644
+--- a/arch/mips/kernel/traps.c
++++ b/arch/mips/kernel/traps.c
+@@ -1091,20 +1091,8 @@ asmlinkage void do_ri(struct pt_regs *regs)
+ 	unsigned int opcode = 0;
+ 	int status = -1;
+ 
+-        /* If Config1.CU2 is not set, the exc_code = 10 of cause reg */
+-        if (cpu_has_mxuv3 && (1 == smp_processor_id())) {
+-                printk("%s(%d):reschedule to cpu0 to smp_processor_id()=%d, read_c0_status()=0x%x, task_cpu(current)=%d, KSTK_STATUS(current)=0x%lx, current->tgid=%d, current->pid=%d\n", __func__, __LINE__, smp_processor_id(), read_c0_status(), task_cpu(current), KSTK_STATUS(current), current->tgid, current->pid);
+-                //resched_cpu(0);
+-	write_c0_cache(0x2000ff0f);
+-        smp_send_reschedule(0);
+-                if (0 == smp_processor_id()) {
+-                        printk("%s(%d):open cu2 field to cpu0 to smp_processor_id()=%d, read_c0_status()=0x%x, task_cpu(current)=%d, KSTK_STATUS(current)=0x%lx, current->tgid=%d, current->pid=%d\n", __func__, __LINE__, smp_processor_id(), read_c0_status(), task_cpu(current), KSTK_STATUS(current), current->tgid, current->pid);
+-                        set_c0_status(ST0_CU2);
+-                        KSTK_STATUS(current) |= ST0_CU2;
+-                }
+-                printk("%s(%d):no cu2 coprocessor to smp_processor_id()=%d, read_c0_status()=0x%x, task_cpu(current)=%d, KSTK_STATUS(current)=0x%lx, current->tgid=%d, current->pid=%d\n", __func__, __LINE__, smp_processor_id(), read_c0_status(), task_cpu(current), KSTK_STATUS(current), current->tgid, current->pid);
+-                return;
+-        }
++        /* MXU3 reserved instruction on CPU1: vendor workaround removed.
++         * COP2 enable is handled in do_cpu case 2 for all CPUs. */
+ 
+ 	/*
+ 	 * Avoid any kernel code. Just emulate the R2 instruction
+@@ -1487,16 +1475,13 @@ asmlinkage void do_cpu(struct pt_regs *regs)
+ 
+ #else
+ 
+-                /* To Xburst2 T40, If Status.CU2 is not set and Config1.CU2 is set, the exc_code is 10 and CE field is 2 to Cause Reg
+-                 * So here only need to open the Status.CU2 field */
+-                if (cpu_has_mxuv3 && (0 == smp_processor_id())) {
++                /* Enable MXU3 (COP2/SIMD512) on any CPU.
++                 * Original T40 vendor code only enabled on CPU0 and
++                 * force-SIGILLed on CPU1. Fixed to match T41 behavior. */
++                if (cpu_has_mxuv3) {
++                        set_c0_info(0xffffffff);
+                         set_c0_status(ST0_CU2);
+                         KSTK_STATUS(current) |= ST0_CU2;
+-//						printk("%s(%d):open cu2 field to cpu0 to smp_processor_id()=%d, read_c0_status()=0x%x, task_cpu(current)=%d, KSTK_STATUS(current)=0x%lx, current->tgid=%d, current->pid=%d\n", __func__, __LINE__, smp_processor_id(), read_c0_status(), task_cpu(current), KSTK_STATUS(current), current->tgid, current->pid);
+-                        goto out;
+-                } else if (1 == smp_processor_id()) {
+-                        printk("%s(%d):no cu2 coprocessor to smp_processor_id()=%d, read_c0_status()=0x%x, task_cpu(current)=%d, KSTK_STATUS(current)=0x%lx, current->tgid=%d, current->pid=%d\n", __func__, __LINE__, smp_processor_id(), read_c0_status(), task_cpu(current), KSTK_STATUS(current), current->tgid, current->pid);
+-                        force_sig(SIGILL, current);
+                         goto out;
+                 }
+ #endif
