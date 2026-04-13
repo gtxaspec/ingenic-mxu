@@ -133,13 +133,15 @@ See the encoding reference at the top of `mxu2_shim.h` for the full major/minor 
 
 ## Toolchain patching (future)
 
-The Ingenic GCC 7.2 source contains clean MXU2 backend patches that can be ported to modern GCC (13/14) and binutils for native performance without any shim overhead. The patch set is small:
+The Ingenic GCC 7.2 source contains complete MXU2 and MXU3 backend patches that can be ported to modern GCC for native performance without any shim overhead.
+
+### MXU2 patch set (small)
 
 **GCC (3 new files + ~180 lines in existing files):**
 
 | File | Lines | Purpose |
 |---|---|---|
-| `gcc/config/mips/mips-mxu2.md` | 1599 | 118 instruction patterns (machine description) |
+| `gcc/config/mips/mips-mxu2.md` | 1599 | 118 instruction patterns |
 | `gcc/config/mips/ingenic-mxu2.def` | 504 | Builtin-to-instruction mapping |
 | `gcc/config/mips/mxu2.h` | 432 | User-facing intrinsics header |
 | `gcc/config/mips/mips.c` | +113 | Register classes, builtin init |
@@ -147,7 +149,7 @@ The Ingenic GCC 7.2 source contains clean MXU2 backend patches that can be porte
 | `gcc/config/mips/mips.md` | +2 | `(include "mips-mxu2.md")` |
 | `gcc/config/mips/mips.opt` | +2 | `-mmxu2` flag |
 
-**Binutils (71 opcodes + flags):**
+**Binutils (71 opcodes):**
 
 | File | Lines | Purpose |
 |---|---|---|
@@ -155,7 +157,29 @@ The Ingenic GCC 7.2 source contains clean MXU2 backend patches that can be porte
 | `include/opcode/mips.h` | +1 | `ASE_MXU128` flag |
 | `gas/config/tc-mips.c` | +6 | `-mmxu2` assembler flag |
 
-MXU2 reuses the COP2 register file (`MXU2_REG_FIRST = COP2_REG_FIRST`), so no new register bank infrastructure is needed -- just a register class alias and constraint letter (`q` for VPR operands).
+### MXU3 patch set (larger, ~3x MXU2)
+
+**GCC (5 new files + ~300 lines in existing files):**
+
+| File | Lines | Purpose |
+|---|---|---|
+| `gcc/config/mips/mips-mxu3.md` | 5112 | 241 instruction patterns (per-quarter execution model) |
+| `gcc/config/mips/ingenic-mxu3.def` | 572 | Builtin-to-instruction mapping |
+| `gcc/config/mips/mxu3.h` | 1068 | User-facing intrinsics header |
+| `gcc/config/mips/mips-mxu3-fix-bug-for-a1.md` | 273 | A1 silicon load workaround (sync before LUW/LUD) |
+| `gcc/config/mips/mips-mxu3-ls-peephole2.md` | 148 | Load/store fusion (la+addiu → lu) |
+| `gcc/config/mips/mips.c` | +~200 | Register classes, VPR/VSR/VWR handling, load/store fusion |
+| `gcc/config/mips/mips.h` | +~100 | `TARGET_MXU3`, `ISA_HAS_MXU3`, 512-bit register defs |
+
+**Binutils (516 opcodes):**
+
+| File | Lines | Purpose |
+|---|---|---|
+| `opcodes/mips-opc.c` | +516 | MXU3 instruction opcodes (MXU512 flag) |
+| `include/opcode/mips.h` | +2 | `ASE_MXU512`, `ASE_MXU512_1` flags |
+| `gas/config/tc-mips.c` | +~10 | `-mmxu3` assembler flag |
+
+MXU3 adds complexity beyond MXU2: sub-register VPR encoding (VPR N = N\*4 + quarter), VSR accumulator registers, auto-increment loads, the A1 silicon workaround, and instruction fusion peepholes. Both MXU2 and MXU3 reuse the COP2 register file.
 
 The source is available at [gtxaspec/ingenic-toolchain](https://github.com/gtxaspec/ingenic-toolchain) under `src/gcc-7-2017.11/` and `src/binutils-2017.11/`.
 
