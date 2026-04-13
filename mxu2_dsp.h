@@ -338,7 +338,7 @@ static __inline__ int mxu2_dot4_w(const int *a, const int *b)
 /* -------------------------------------------------------------------------
  * Interleave/deinterleave for stereo audio
  * Split interleaved L/R pairs into separate L and R buffers (halfword)
- * TODO: requires shufv with proper control vector
+ * TODO: requires determining shufv control vector byte format
  * ------------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------------
