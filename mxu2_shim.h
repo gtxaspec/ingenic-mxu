@@ -47,10 +47,11 @@
  *     14     Unary flt (vt=1)   fsqrt/fclass (0-7), vcvt* (8-57)
  *
  *   SPECIAL2 (opcode=0x1C) immediate ops:
- *     f0x38: sats(v=0)/satu(v=2)/slli(v=4)  rs=sz*8+v, imm in bits 15-11
+ *     (0x1C<<26)|(rs<<21)|(imm<<16)|(vpr_src<<11)|(vpr_dst<<6)|funct
+ *     f0x38: sats(v=0)/satu(v=2)/slli(v=4)  rs=sz*8+v, imm in rt field
  *     f0x39: srai(v=0)/srari(v=2)/srli(v=4)/srlri(v=6)
  *     f0x30: andib(0)/norib(8)/orib(16)/xorib(24)  rs=op_sel
- *     f0x35: repi  rs=sz*8, idx in bits 20-16
+ *     f0x35: repi  rs=sz*8, idx in rt field
  *     f0x19: bselv (3-op boolean select)
  *     f0x18: shufv (3-op shuffle)
  *
