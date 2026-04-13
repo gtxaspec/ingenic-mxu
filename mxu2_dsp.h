@@ -336,10 +336,59 @@ static __inline__ int mxu2_dot4_w(const int *a, const int *b)
 }
 
 /* -------------------------------------------------------------------------
- * Interleave/deinterleave for stereo audio
- * Split interleaved L/R pairs into separate L and R buffers (halfword)
- * TODO: requires determining shufv control vector byte format
+ * Interleave/deinterleave for stereo audio (halfword)
+ *
+ * shufv semantics (verified on hardware):
+ *   out[i] = {A, B}_interleaved[ctrl[i]]
+ *   where ctrl[i] bit 0 selects source (0=A, 1=B)
+ *   and ctrl[i] >> 1 selects the byte index within that source.
+ *   Equivalently: index into {A[0],B[0],A[1],B[1],...} flat array.
  * ------------------------------------------------------------------------- */
+
+/*
+ * Interleave: L[0..3] + R[0..3] -> out[L0,R0,L1,R1,L2,R2,L3,R3] (halfword)
+ * Processes 4 stereo pairs (8 halfwords = 16 bytes) per call.
+ *
+ * shufv ctrl byte: bit0 = source (0=A/left, 1=B/right), bits[4:1] = byte index.
+ * For halfword interleave, keep byte pairs together:
+ *   ctrl = {0,2,1,3, 4,6,5,7, 8,10,9,11, 12,14,13,15}
+ *         = L[0]lo,L[0]hi, R[0]lo,R[0]hi, L[1]lo,L[1]hi, R[1]lo,R[1]hi, ...
+ */
+static __inline__ void mxu2_interleave_h(const short *left, const short *right,
+                                          short *out)
+{
+    static const unsigned char ctrl[16] __attribute__((aligned(16))) =
+        {0,2,1,3, 4,6,5,7, 8,10,9,11, 12,14,13,15};
+    mxu2_v16i8 r = mxu2_shufv(*(mxu2_v16i8*)left, *(mxu2_v16i8*)right,
+                                *(mxu2_v16i8*)ctrl);
+    mxu2_store(out, (mxu2_v4i32)r);
+}
+
+/*
+ * Deinterleave: in[L0,R0,L1,R1,...] -> L[0..3] + R[0..3] (halfword)
+ * Inverse of interleave. Feed same stereo buffer as both A and B,
+ * then pick even halfwords (L) and odd halfwords (R).
+ *
+ * For L: bytes 0,1,4,5,8,9,12,13 → ctrl_L[i] = (i/2)*4 + (i%2), bit0=0
+ *   = {0,2, 8,10, 16,18, 24,26, ...} but only 16 ctrl bytes
+ * For R: bytes 2,3,6,7,10,11,14,15 → similar with offset
+ */
+static __inline__ void mxu2_deinterleave_h(const short *stereo,
+                                             short *left, short *right)
+{
+    /* L: extract bytes at positions 0,1, 4,5, 8,9, 12,13 from stereo */
+    static const unsigned char ctrl_l[16] __attribute__((aligned(16))) =
+        {0,2, 8,10, 16,18, 24,26, 0,0,0,0, 0,0,0,0};
+    /* R: extract bytes at positions 2,3, 6,7, 10,11, 14,15 from stereo */
+    static const unsigned char ctrl_r[16] __attribute__((aligned(16))) =
+        {4,6, 12,14, 20,22, 28,30, 0,0,0,0, 0,0,0,0};
+    mxu2_v16i8 vs = *(mxu2_v16i8*)stereo;
+    mxu2_v16i8 rl = mxu2_shufv(vs, vs, *(mxu2_v16i8*)ctrl_l);
+    mxu2_v16i8 rr = mxu2_shufv(vs, vs, *(mxu2_v16i8*)ctrl_r);
+    /* Only first 8 bytes (4 halfwords) are valid in each result */
+    __builtin_memcpy(left, &rl, 8);
+    __builtin_memcpy(right, &rr, 8);
+}
 
 /* -------------------------------------------------------------------------
  * Absolute difference and accumulate: acc += |a - b|
