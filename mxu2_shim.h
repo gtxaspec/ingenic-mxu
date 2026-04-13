@@ -145,8 +145,8 @@ typedef float          mxu2_v4f32  __attribute__((vector_size(16), aligned(16)))
 /* Unary: load VPR0=a, execute OP, store VPR2=result */
 #define _MXU2_UNIOP(ret, a, OP_WORD) \
     do { \
-        mxu2_v4i32 _a __attribute__((aligned(16))) = (a); \
-        mxu2_v4i32 _r __attribute__((aligned(16))); \
+        mxu2_v4i32 __u_a __attribute__((aligned(16))) = (a); \
+        mxu2_v4i32 __u_r __attribute__((aligned(16))); \
         __asm__ __volatile__ ( \
             ".set push\n\t" \
             ".set noreorder\n\t" \
@@ -158,19 +158,19 @@ typedef float          mxu2_v4f32  __attribute__((vector_size(16), aligned(16)))
             _MXU2_WORD(_MXU2_W_SU1Q_VPR2) \
             ".set pop\n\t" \
             : \
-            : [_a] "r"(&_a), [_r] "r"(&_r) \
+            : [_a] "r"(&__u_a), [_r] "r"(&__u_r) \
             : "$t0", "memory" \
         ); \
-        (ret) = _r; \
+        (ret) = __u_r; \
     } while(0)
 
 /* Accumulate: load VPR0=a, VPR1=b, VPR2=acc, execute OP (writes VPR2), store */
 #define _MXU2_ACCOP(ret, a, b, acc, OP_WORD) \
     do { \
-        mxu2_v4i32 _a   __attribute__((aligned(16))) = (a); \
-        mxu2_v4i32 _b   __attribute__((aligned(16))) = (b); \
-        mxu2_v4i32 _acc __attribute__((aligned(16))) = (acc); \
-        mxu2_v4i32 _r   __attribute__((aligned(16))); \
+        mxu2_v4i32 __ac_a   __attribute__((aligned(16))) = (a); \
+        mxu2_v4i32 __ac_b   __attribute__((aligned(16))) = (b); \
+        mxu2_v4i32 __ac_acc __attribute__((aligned(16))) = (acc); \
+        mxu2_v4i32 __ac_r   __attribute__((aligned(16))); \
         __asm__ __volatile__ ( \
             ".set push\n\t" \
             ".set noreorder\n\t" \
@@ -186,19 +186,19 @@ typedef float          mxu2_v4f32  __attribute__((vector_size(16), aligned(16)))
             _MXU2_WORD(_MXU2_W_SU1Q_VPR2) \
             ".set pop\n\t" \
             : \
-            : [_a] "r"(&_a), [_b] "r"(&_b), [_acc] "r"(&_acc), [_r] "r"(&_r) \
+            : [_a] "r"(&__ac_a), [_b] "r"(&__ac_b), [_acc] "r"(&__ac_acc), [_r] "r"(&__ac_r) \
             : "$t0", "memory" \
         ); \
-        (ret) = _r; \
+        (ret) = __ac_r; \
     } while(0)
 
 /* Tri-operand: load VPR0=a, VPR1=b, VPR2=c, execute OP, store VPR3=result */
 #define _MXU2_TRIOP(ret, a, b, c, OP_WORD) \
     do { \
-        mxu2_v4i32 _a __attribute__((aligned(16))) = (a); \
-        mxu2_v4i32 _b __attribute__((aligned(16))) = (b); \
-        mxu2_v4i32 _c __attribute__((aligned(16))) = (c); \
-        mxu2_v4i32 _r __attribute__((aligned(16))); \
+        mxu2_v4i32 __t_a __attribute__((aligned(16))) = (a); \
+        mxu2_v4i32 __t_b __attribute__((aligned(16))) = (b); \
+        mxu2_v4i32 __t_c __attribute__((aligned(16))) = (c); \
+        mxu2_v4i32 __t_r __attribute__((aligned(16))); \
         __asm__ __volatile__ ( \
             ".set push\n\t" \
             ".set noreorder\n\t" \
@@ -214,10 +214,10 @@ typedef float          mxu2_v4f32  __attribute__((vector_size(16), aligned(16)))
             _MXU2_WORD(_MXU2_W_SU1Q_VPR3) \
             ".set pop\n\t" \
             : \
-            : [_a] "r"(&_a), [_b] "r"(&_b), [_c] "r"(&_c), [_r] "r"(&_r) \
+            : [_a] "r"(&__t_a), [_b] "r"(&__t_b), [_c] "r"(&__t_c), [_r] "r"(&__t_r) \
             : "$t0", "memory" \
         ); \
-        (ret) = _r; \
+        (ret) = __t_r; \
     } while(0)
 
 /* =========================================================================
@@ -1167,141 +1167,141 @@ static __inline__ mxu2_v4i32 mxu2_vcvtqodw(mxu2_v4i32 a) { /* Q odd w->d */
 /* shift left logical imm */
 #define mxu2_slli_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(4<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(4<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v16i8)_r; })
 #define mxu2_slli_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(12<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(12<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v8i16)_r; })
 #define mxu2_slli_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(20<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(20<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     _r; })
 #define mxu2_slli_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(28<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(28<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     _r; })
 /* shift right arith imm */
 #define mxu2_srai_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(0<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(0<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v16i8)_r; })
 #define mxu2_srai_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(8<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(8<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v8i16)_r; })
 #define mxu2_srai_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(16<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(16<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 #define mxu2_srai_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(24<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(24<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 /* shift right arith rounding imm */
 #define mxu2_srari_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(2<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(2<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v16i8)_r; })
 #define mxu2_srari_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(10<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(10<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v8i16)_r; })
 #define mxu2_srari_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(18<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(18<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 #define mxu2_srari_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(26<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(26<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 /* shift right logical imm */
 #define mxu2_srli_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(4<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(4<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v16i8)_r; })
 #define mxu2_srli_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(12<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(12<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v8i16)_r; })
 #define mxu2_srli_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(20<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(20<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 #define mxu2_srli_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(28<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(28<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 /* shift right logical rounding imm */
 #define mxu2_srlri_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(6<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(6<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v16i8)_r; })
 #define mxu2_srlri_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(14<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(14<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     (mxu2_v8i16)_r; })
 #define mxu2_srlri_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(22<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(22<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 #define mxu2_srlri_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(30<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x39)); \
+        ((0x1C<<26)|(30<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x39)); \
     _r; })
 
 /* --- SPECIAL2 immediate: saturation --- */
 
 #define mxu2_sats_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(0<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(0<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v16i8)_r; })
 #define mxu2_sats_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(8<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(8<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v8i16)_r; })
 #define mxu2_sats_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(16<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(16<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     _r; })
 #define mxu2_sats_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (v), \
-        ((0x1C<<26)|(24<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(24<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     _r; })
 #define mxu2_satu_b(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(2<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(2<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v16u8)_r; })
 #define mxu2_satu_h(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(10<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(10<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v8u16)_r; })
 #define mxu2_satu_w(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(18<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(18<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v4u32)_r; })
 #define mxu2_satu_d(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(26<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x38)); \
+        ((0x1C<<26)|(26<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x38)); \
     (mxu2_v4u32)_r; })
 
 /* --- SPECIAL2 immediate: byte-wise logic --- */
 
 #define mxu2_andib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(0<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x30)); \
+        ((0x1C<<26)|(0<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
     (mxu2_v16u8)_r; })
 #define mxu2_norib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(8<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x30)); \
+        ((0x1C<<26)|(8<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
     (mxu2_v16u8)_r; })
 #define mxu2_orib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(16<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x30)); \
+        ((0x1C<<26)|(16<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
     (mxu2_v16u8)_r; })
 #define mxu2_xorib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
-        ((0x1C<<26)|(24<<21)|(0<<16)|((imm)<<11)|(2<<6)|0x30)); \
+        ((0x1C<<26)|(24<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
     (mxu2_v16u8)_r; })
 
 /* --- SPECIAL2 immediate: replicate element --- */

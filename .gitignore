@@ -7,3 +7,4 @@ test_shim
 *.dis
 all_intrinsics_v2.c
 all_intrinsics_test.c
+test_all_mxu2
