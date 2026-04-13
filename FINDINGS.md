@@ -183,8 +183,10 @@ Build: `mipsel-linux-gnu-gcc -O0 -o mxu_probe mxu_probe.c -static`
 
 ## TODO / Next Steps
 
-- [ ] Test additional VPR arithmetic: `sub_w`, `addh` (halfword), `dotps_w` (dot product)
-- [ ] Test MXU2 with the Ingenic GCC 4.7.2 toolchain using `-mmxu2` flag (natural code generation)
+- [x] Test additional VPR arithmetic — all 368 ops tested, 431 PASS on T20+T31
+- [x] Test MXU2 with Ingenic GCC 4.7.2 toolchain — native path verified, shim auto-delegates
 - [ ] Test T32 (updated XBurst1 core)
 - [ ] Determine if MCSR dirty bit gets set after VPR write (read MCSR *after* arithmetic)
-- [ ] Assess feasibility of a FAAC MXU2 patch
+- [ ] Port Ingenic GCC 7.2 MXU2 patches to modern GCC (13/14) for Buildroot/Thingino
+- [ ] Determine shufv control vector format for stereo interleave/deinterleave
+- [ ] FAAC/Opus MXU2 optimization using mxu2_dsp.h kernels
