@@ -1,8 +1,19 @@
 # ingenic-mxu
 
-Complete MXU2 SIMD intrinsics for Ingenic XBurst1 MIPS processors -- works with any MIPS32 cross-compiler, no proprietary toolchain needed.
+Complete SIMD intrinsics for Ingenic MIPS processors -- works with any MIPS32 cross-compiler, no proprietary toolchain needed.
 
-## What is MXU2?
+| Shim | ISA | Width | SoCs | Ops | Tests |
+|------|-----|-------|------|-----|-------|
+| `mxu2_shim.h` | MXU2 | 128-bit | T20, T21, T23, T30, T31, T32 | 368 | 431 |
+| `mxu3_shim.h` | MXU3 | 512-bit | T40, T41 | 498 | 455 |
+
+MXU2 and MXU3 are completely separate ISAs -- MXU2 instructions SIGILL on XBurst2 and vice versa.
+
+---
+
+## MXU2 (XBurst1, 128-bit)
+
+### What is MXU2?
 
 MXU2 is Ingenic's 128-bit SIMD extension for XBurst1 cores (T20, T21, T23, T30, T31, T32). It provides 32 vector registers (VPR0-VPR31), each holding 128 bits that can be operated on as:
 
@@ -351,14 +362,198 @@ Copy to device and run:
 
 431 tests: 61 value-verified with reference implementations, 339 no-SIGILL execution sweep, plus scalar/branch/load-store checks. Verified on T20 (XBurst1 V0.1) and T31 (XBurst1 V0.0) with Thingino kernels.
 
+---
+
+## MXU3 (XBurst2, 512-bit)
+
+### What is MXU3?
+
+MXU3 is Ingenic's 512-bit SIMD extension for XBurst2 cores (T40, T41). It completely replaces MXU2 -- there is no backward compatibility. MXU3 provides 32 x 512-bit VPR registers that can be operated on as:
+
+- 64 x 8-bit integers
+- 32 x 16-bit integers
+- 16 x 32-bit integers or floats
+
+### Hardware model (verified on T41 and T40)
+
+Unlike standard SIMD where one instruction processes the full register width, MXU3 operates on **128-bit quarters**:
+
+- Each 512-bit VPR is divided into 4 x 128-bit quarters (Q0-Q3)
+- LUQ/SUQ load/store one quarter at a time and **auto-increment** the base register
+- COP2 VPR fields use **sub-register encoding**: VPR N = N\*4 + quarter
+- Each arithmetic instruction operates on **one quarter** -- full 512-bit requires 4 instructions
+
+The shim handles this transparently: every inline function issues 4x loads, 4x operations, and 4x stores.
+
+### Quick start
+
+```c
+#include "mxu3_shim.h"
+
+void vector_add_512(const int *a, const int *b, int *result, int count) {
+    if (!mxu3_available()) return;  // runtime detection
+
+    for (int i = 0; i < count; i += 16) {
+        mxu3_v16i32 va = MXU3_LOAD(&a[i]);     // 16 ints = 512 bits
+        mxu3_v16i32 vb = MXU3_LOAD(&b[i]);
+        mxu3_v16i32 vc = mxu3_addw(va, vb);
+        MXU3_STORE(&result[i], vc);
+    }
+}
+```
+
+Build with any MIPS32 cross-compiler:
+```sh
+mipsel-linux-gcc -O2 -o myprogram myprogram.c -static
+```
+
+### Requirements
+
+- Any MIPS32 cross-compiler (GCC, Clang, etc.)
+- Target SoC: T40 or T41 (XBurst2 with MXU3)
+- Kernel with MXU3 COP2 handler (vendor or Thingino kernels)
+- Pointers passed to `MXU3_LOAD`/`MXU3_STORE` must be **64-byte aligned**
+- T40: MXU3 works on CPU0 only without kernel patch (see `t40-mxu3-fix.patch`)
+
+### Types
+
+| Type | Description |
+|------|-------------|
+| `mxu3_v64i8` | 64 x signed 8-bit |
+| `mxu3_v64u8` | 64 x unsigned 8-bit |
+| `mxu3_v32i16` | 32 x signed 16-bit |
+| `mxu3_v32u16` | 32 x unsigned 16-bit |
+| `mxu3_v16i32` | 16 x signed 32-bit |
+| `mxu3_v16u32` | 16 x unsigned 32-bit |
+| `mxu3_v16f32` | 16 x 32-bit float |
+
+All types are 64-byte aligned GCC vector extensions.
+
+### API (220 inline functions)
+
+```c
+// Arithmetic
+mxu3_v16i32 c = mxu3_addw(a, b);       // 16-lane word add
+mxu3_v16i32 c = mxu3_subw(a, b);       // subtract
+mxu3_v16i32 c = mxu3_mulw(a, b);       // multiply
+mxu3_v16i32 c = mxu3_absw(a);          // absolute value
+
+// Compare (returns all-ones/zeros mask per element)
+mxu3_v16i32 m = mxu3_ceqw(a, b);       // equal
+mxu3_v16i32 m = mxu3_cltsw(a, b);      // less-than signed
+mxu3_v16i32 m = mxu3_ceqzw(a);         // equal to zero
+
+// Min / Max
+mxu3_v16i32 c = mxu3_maxsw(a, b);      // signed max
+mxu3_v16i32 c = mxu3_minsw(a, b);      // signed min
+
+// Bitwise
+mxu3_v16i32 c = mxu3_andv(a, b);       // AND
+mxu3_v16i32 c = mxu3_orv(a, b);        // OR
+mxu3_v16i32 c = mxu3_xorv(a, b);       // XOR
+mxu3_v16i32 c = mxu3_bselv(ctrl, src, init);  // bit select
+
+// Byte-immediate logic
+mxu3_v16i32 c = mxu3_andib(a, 0x0F);   // AND each byte with 0x0F
+mxu3_v16i32 c = mxu3_orib(a, 0x80);    // OR each byte with 0x80
+
+// Shifts
+mxu3_v16i32 c = mxu3_sllw(a, shamt);   // shift left by register
+mxu3_v16i32 c = mxu3_slliw(a, 4);      // shift left by immediate
+mxu3_v16i32 c = mxu3_sraw(a, shamt);   // arithmetic right shift
+
+// Floating-point (word only, 16 x float32)
+mxu3_v16i32 c = mxu3_faddw(a, b);      // float add
+mxu3_v16i32 c = mxu3_fmulw(a, b);      // float multiply
+mxu3_v16i32 c = mxu3_fmaxw(a, b);      // float max
+mxu3_v16i32 c = mxu3_ffsiw(a);         // int-to-float (signed)
+mxu3_v16i32 c = mxu3_ftsiw(a);         // float-to-int (signed)
+
+// Widening arithmetic
+mxu3_v16i32 c = mxu3_waddsbl(a, b);    // signed byte add, widen low half
+mxu3_v16i32 c = mxu3_wsmulhl(a, b);    // signed halfword mul, widen low
+
+// Saturation
+mxu3_v16i32 c = mxu3_satsswh(a);       // saturate signed word to halfword
+
+// Interleave
+mxu3_v16i32 c = mxu3_ilvew(a, b);      // interleave even words
+mxu3_v16i32 c = mxu3_ilvow(a, b);      // interleave odd words
+
+// Extension
+mxu3_v16i32 c = mxu3_extubl(a);        // zero-extend bytes, low half
+mxu3_v16i32 c = mxu3_extshl(a);        // sign-extend halfwords, low half
+
+// Runtime detection
+if (mxu3_available()) { ... }
+```
+
+### Raw encoding constants (278 additional ops)
+
+For VSR accumulate, SR sum/MAC, load/store variants, register transfers, NNA, and branch ops, the shim provides raw encoding constants:
+
+```c
+// VSR multiply-accumulate (use with inline asm)
+// MXU3_MLAW, MXU3_MLSW, MXU3_SMLAHE, ...
+
+// Load/store variants
+// MXU3_LUW, MXU3_LUD, MXU3_LUQ, MXU3_LUO (auto-increment)
+// MXU3_LAW, MXU3_LAD, MXU3_LAQ, MXU3_LAO (with offset)
+// MXU3_LUW2B, MXU3_LUW4B, ... (strided)
+
+// Register transfer
+// MXU3_MTCPUW, MXU3_MFCPUW (VPR ↔ GPR)
+// MXU3_CFCMXU, MXU3_CTCMXU (MXU control registers)
+
+// Encoding helper macros for custom inline asm:
+// _MXU3_LUQ(base_gpr, vrd_qn)   — quarter load encoding
+// _MXU3_SUQ(base_gpr, vrp_qn)   — quarter store encoding
+// _MXU3_WORD(encoding)           — emit .word in inline asm
+// _MXU3_BQ0..BQ3                 — per-quarter binary op offsets
+// _MXU3_UQ0..UQ3                 — per-quarter unary op offsets
+```
+
+### Device differences
+
+| Feature | T40 (MXU3.0) | T41 (MXU3.1) |
+|---------|-------------|-------------|
+| Core ops | 452 pass | 455 pass |
+| MXU3.1 shuffles (gshufwb_1/2, gshufvb) | SIGILL | pass |
+| NNA instructions | pass | pass |
+| MXU3 on CPU1 | needs kernel patch | works |
+
+### A1 silicon note
+
+Early A1 revision silicon has a data coherency bug affecting LUW/LUD loads. A `sync` instruction must precede each LUW/LUD. This shim uses LUQ exclusively, so inline functions are safe on all revisions. Use `_MXU3_SYNC` before raw `MXU3_LUW`/`MXU3_LUD` on A1 devices.
+
+### Testing
+
+```sh
+mipsel-linux-gcc -O1 -flax-vector-conversions -o test_mxu3 test_mxu3.c -static -lm
+```
+
+```
+=== Results: 455 PASS, 0 FAIL, 0 SIGILL ===
+```
+
+455 tests: 34 value-verified + 421 SIGILL execution sweep covering all inline functions, VSR ops, SR sum/MAC, load/store, register transfers, NNA, positional ops, and branch encodings.
+
+---
+
 ## Files
 
 | File | Description |
 |------|-------------|
-| `mxu2_shim.h` | The shim header -- include this in your project |
-| `test_all_mxu2.c` | Comprehensive test program (431 tests) |
+| `mxu2_shim.h` | MXU2 128-bit shim (368 ops, XBurst1) |
+| `mxu3_shim.h` | MXU3 512-bit shim (498 ops, XBurst2) |
+| `mxu2_dsp.h` | Optimized DSP kernels for MXU2 (butterfly, FIR, Q15 MAC) |
+| `test_all_mxu2.c` | MXU2 test program (431 tests) |
+| `test_mxu3.c` | MXU3 test program (455 tests) |
+| `test_dsp.c` | DSP kernel tests |
 | `mxu_probe.c` | Hardware capability probe (MXU1 vs MXU2 detection) |
-| `FINDINGS.md` | Reverse-engineering notes and encoding reference |
+| `t40-mxu3-fix.patch` | T40 kernel patch for MXU3 on CPU1 |
+| `FINDINGS.md` | MXU2 reverse-engineering notes |
+| `MXU3_FINDINGS.md` | MXU3 encoding reference and hardware notes |
 
 ## License
 
