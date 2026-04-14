@@ -1493,8 +1493,8 @@
 +MXU2_BUILTIN (li_w, MIPS_V4SI_FTYPE_HI),
 +MXU2_BUILTIN (li_d, MIPS_V2DI_FTYPE_HI),
 --- a/gcc/config/mips/mips-mxu2.md	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 20:23:32.036144485 -0700
-@@ -0,0 +1,1852 @@
++++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 20:29:58.034704598 -0700
+@@ -0,0 +1,1833 @@
 +;; Machine Description for MIPS INGENIC MXU2
 +;; Based on the Ingenic MXU2 XBurst@Instruction Set Arch Release Date: Nov. 18,2014
 +;; Contributed by Qian Liu (qian.liu@ingenic.com), Ingenic.
@@ -1918,25 +1918,6 @@
 +  "fmin<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+;; Vector move expand
-+(define_expand "mov<mode>"
-+  [(set (match_operand:MXU2 0)
-+	(match_operand:MXU2 1))]
-+  "ISA_HAS_MXU2"
-+{
-+  if (mips_legitimize_move (<MODE>mode, operands[0], operands[1]))
-+    DONE;
-+})
-+
-+;; Vector init
-+(define_expand "vec_init<mode>"
-+  [(match_operand:MXU2 0 "register_operand")
-+   (match_operand:MXU2 1 "")]
-+  "ISA_HAS_MXU2"
-+{
-+  mips_expand_vector_init (operands[0], operands[1]);
-+  DONE;
-+})
 +
 +;; lat_mult1 for B/H 5; W 7; D 10;
 +;; lat_mult2 for B 12 H 20 W 36 D 68
