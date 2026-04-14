@@ -17768,17 +17768,15 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 	}
       break;
 
-    /* MXU2 immediate byte bitwise: scalar const_uimm8, no conversion.  */
+    /* MXU2 immediate byte bitwise: scalar const_uimm8, no conversion.
+       Mask to 8 bits since GCC may sign-extend the UQI argument.  */
     case CODE_FOR_mxu2_andib:
     case CODE_FOR_mxu2_orib:
     case CODE_FOR_mxu2_norib:
     case CODE_FOR_mxu2_xorib:
       gcc_assert (has_target_p && nops == 3);
       if (CONST_INT_P (ops[2].value))
-	{
-	  if (!IN_RANGE (INTVAL (ops[2].value), 0, 255))
-	    error_opno = 2;
-	}
+	ops[2].value = GEN_INT (INTVAL (ops[2].value) & 0xFF);
       break;
 
     case CODE_FOR_msa_insert_b:
