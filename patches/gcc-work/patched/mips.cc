@@ -17717,7 +17717,8 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 	}
       break;
 
-    /* MXU2 immediate shifts: convert scalar immediate to vector constant.  */
+    /* MXU2 immediate shifts (vashl/vashr/vlshr patterns):
+       convert scalar immediate to vector constant.  */
     case CODE_FOR_mxu2_vashlv16qi3:
     case CODE_FOR_mxu2_vashlv8hi3:
     case CODE_FOR_mxu2_vashlv4si3:
@@ -17730,6 +17731,25 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
     case CODE_FOR_mxu2_vlshrv8hi3:
     case CODE_FOR_mxu2_vlshrv4si3:
     case CODE_FOR_mxu2_vlshrv2di3:
+      gcc_assert (has_target_p && nops == 3);
+      if (CONST_INT_P (ops[2].value))
+	{
+	  rangelo = 0;
+	  rangehi = GET_MODE_UNIT_BITSIZE (ops[0].mode) - 1;
+	  if (IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
+	    {
+	      ops[2].mode = ops[0].mode;
+	      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
+							INTVAL (ops[2].value));
+	    }
+	  else
+	    error_opno = 2;
+	}
+      break;
+
+    /* MXU2 rounding immediate shifts (srari/srlri):
+       these use unspec patterns with scalar const immediate,
+       no vector conversion needed — just validate range.  */
     case CODE_FOR_mxu2_srari_b:
     case CODE_FOR_mxu2_srari_h:
     case CODE_FOR_mxu2_srari_w:
@@ -17743,13 +17763,7 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 	{
 	  rangelo = 0;
 	  rangehi = GET_MODE_UNIT_BITSIZE (ops[0].mode) - 1;
-	  if (IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
-	    {
-	      ops[2].mode = ops[0].mode;
-	      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
-							INTVAL (ops[2].value));
-	    }
-	  else
+	  if (!IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
 	    error_opno = 2;
 	}
       break;

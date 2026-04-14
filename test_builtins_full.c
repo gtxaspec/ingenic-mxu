@@ -2908,26 +2908,26 @@ int main(void)
         pass_count++; /* smoke: srlri_b */
     }
 
-    /* Immediate bitwise */
+    /* Immediate bitwise — FTYPE uses V16QI (signed) */
     printf("--- immediate bitwise ---\n");
     {
-        v16u8 a = *(v16u8*)A_B;
-        unsigned char out[16] __attribute__((aligned(16)));
+        v16i8 a = *(v16i8*)A_B;
+        signed char out[16] __attribute__((aligned(16)));
         unsigned char exp[16];
 
-        *(v16u8*)out = __builtin_mxu2_andib(a, 0x0F);
+        *(v16i8*)out = __builtin_mxu2_andib(a, 0x0F);
         for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] & 0x0F;
         check_v("andib", out, exp, 16);
 
-        *(v16u8*)out = __builtin_mxu2_orib(a, 0x80);
+        *(v16i8*)out = __builtin_mxu2_orib(a, 0x80);
         for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] | 0x80;
         check_v("orib", out, exp, 16);
 
-        *(v16u8*)out = __builtin_mxu2_xorib(a, 0xFF);
+        *(v16i8*)out = __builtin_mxu2_xorib(a, 0xFF);
         for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] ^ 0xFF;
         check_v("xorib", out, exp, 16);
 
-        *(v16u8*)out = __builtin_mxu2_norib(a, 0x00);
+        *(v16i8*)out = __builtin_mxu2_norib(a, 0x00);
         for (int i = 0; i < 16; i++) exp[i] = ~((unsigned char)A_B[i] | 0x00);
         check_v("norib", out, exp, 16);
     }
