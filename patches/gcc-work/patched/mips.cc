@@ -5531,6 +5531,10 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmtc1\t%z1,%0" : "mtc1\t%z1,%0";
 	    }
 
+	  /* MXU2: use mfcpuw (GP->COP2 broadcast) instead of mtc2.  */
+	  if (MXU2_REG_P (REGNO (dest)) && ISA_HAS_MXU2)
+	    return "mfcpuw\t%w0,%z1";
+
 	  if (ALL_COP_REG_P (REGNO (dest)))
 	    {
 	      static char retval[] = "dmtc_\t%z1,%0";
@@ -5579,6 +5583,10 @@ mips_output_move (rtx dest, rtx src)
 	      gcc_assert (!msa_p);
 	      return dbl_p ? "dmfc1\t%0,%1" : "mfc1\t%0,%1";
 	    }
+
+	  /* MXU2: COP2->GP needs split through memory; emit split marker.  */
+	  if (MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
+	    return "#";
 
 	  if (ALL_COP_REG_P (REGNO (src)))
 	    {
@@ -5684,6 +5692,14 @@ mips_output_move (rtx dest, rtx src)
 	  return dbl_p ? "ldc1\t%0,%1" : "lwc1\t%0,%1";
 	}
     }
+  /* MXU2: COP2<->MEM scalar moves need split through stack.  */
+  if (dest_code == REG && MXU2_REG_P (REGNO (dest))
+      && ISA_HAS_MXU2 && src_code == MEM)
+    return "#";
+  if (dest_code == MEM && src_code == REG
+      && MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
+    return "#";
+
   if (dest_code == REG && ALL_COP_REG_P (REGNO (dest)) && src_code == MEM)
     {
       static char retval[] = "l_c_\t%0,%1";
