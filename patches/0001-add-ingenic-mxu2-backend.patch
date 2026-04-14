@@ -540,11 +540,12 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -17465,6 +17717,56 @@
+@@ -17465,6 +17717,70 @@
  	}
        break;
  
-+    /* MXU2 immediate shifts: convert scalar immediate to vector constant.  */
++    /* MXU2 immediate shifts (vashl/vashr/vlshr patterns):
++       convert scalar immediate to vector constant.  */
 +    case CODE_FOR_mxu2_vashlv16qi3:
 +    case CODE_FOR_mxu2_vashlv8hi3:
 +    case CODE_FOR_mxu2_vashlv4si3:
@@ -557,6 +558,25 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +    case CODE_FOR_mxu2_vlshrv8hi3:
 +    case CODE_FOR_mxu2_vlshrv4si3:
 +    case CODE_FOR_mxu2_vlshrv2di3:
++      gcc_assert (has_target_p && nops == 3);
++      if (CONST_INT_P (ops[2].value))
++	{
++	  rangelo = 0;
++	  rangehi = GET_MODE_UNIT_BITSIZE (ops[0].mode) - 1;
++	  if (IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
++	    {
++	      ops[2].mode = ops[0].mode;
++	      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
++							INTVAL (ops[2].value));
++	    }
++	  else
++	    error_opno = 2;
++	}
++      break;
++
++    /* MXU2 rounding immediate shifts (srari/srlri):
++       these use unspec patterns with scalar const immediate,
++       no vector conversion needed — just validate range.  */
 +    case CODE_FOR_mxu2_srari_b:
 +    case CODE_FOR_mxu2_srari_h:
 +    case CODE_FOR_mxu2_srari_w:
@@ -570,13 +590,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +	{
 +	  rangelo = 0;
 +	  rangehi = GET_MODE_UNIT_BITSIZE (ops[0].mode) - 1;
-+	  if (IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
-+	    {
-+	      ops[2].mode = ops[0].mode;
-+	      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
-+							INTVAL (ops[2].value));
-+	    }
-+	  else
++	  if (!IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
 +	    error_opno = 2;
 +	}
 +      break;
@@ -597,7 +611,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      case CODE_FOR_msa_insert_b:
      case CODE_FOR_msa_insert_h:
      case CODE_FOR_msa_insert_w:
-@@ -20232,6 +20534,9 @@
+@@ -20232,6 +20548,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -607,7 +621,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21419,16 @@
+@@ -21114,6 +21433,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
