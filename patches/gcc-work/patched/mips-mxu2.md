@@ -421,25 +421,6 @@
   "fmin<mxu2fmt>\t%w0,%w1,%w2"
   [(set_attr "mode" "TI")])
 
-;; Vector move expand
-(define_expand "mov<mode>"
-  [(set (match_operand:MXU2 0)
-	(match_operand:MXU2 1))]
-  "ISA_HAS_MXU2"
-{
-  if (mips_legitimize_move (<MODE>mode, operands[0], operands[1]))
-    DONE;
-})
-
-;; Vector init
-(define_expand "vec_init<mode>"
-  [(match_operand:MXU2 0 "register_operand")
-   (match_operand:MXU2 1 "")]
-  "ISA_HAS_MXU2"
-{
-  mips_expand_vector_init (operands[0], operands[1]);
-  DONE;
-})
 
 ;; lat_mult1 for B/H 5; W 7; D 10;
 ;; lat_mult2 for B 12 H 20 W 36 D 68
