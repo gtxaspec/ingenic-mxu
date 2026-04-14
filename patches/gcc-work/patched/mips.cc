@@ -5535,10 +5535,17 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmtc1\t%z1,%0" : "mtc1\t%z1,%0";
 	    }
 
-	  /* MXU2: GP->COP2 scalar: use insfcpuw to insert into element 0.
+	  /* MXU2: GP->COP2 scalar: use insfcpuw to insert into element N.
+	     Element index = (regno - COP2_REG_FIRST) % 4.
 	     XBurst has no mtc2 — COP2 is fully repurposed for MXU2.  */
 	  if (MXU2_REG_P (REGNO (dest)) && ISA_HAS_MXU2)
-	    return "insfcpuw\t%w0[0],%z1";
+	    {
+	      static char buf[64];
+	      int elem = (REGNO (dest) - COP2_REG_FIRST) & 3;
+	      int base = REGNO (dest) - elem;
+	      sprintf (buf, "insfcpuw\t$vr%d[%d],%%z1", base - COP2_REG_FIRST, elem);
+	      return buf;
+	    }
 
 	  if (ALL_COP_REG_P (REGNO (dest)))
 	    {
@@ -5589,10 +5596,16 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmfc1\t%0,%1" : "mfc1\t%0,%1";
 	    }
 
-	  /* MXU2: COP2->GP scalar: use mtcpusw to extract element 0.
-	     XBurst has no mfc2 — COP2 is fully repurposed for MXU2.  */
+	  /* MXU2: COP2->GP scalar: use mtcpusw to extract element N.
+	     Element index = (regno - COP2_REG_FIRST) % 4.  */
 	  if (MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
-	    return "mtcpusw\t%0,%w1[0]";
+	    {
+	      static char buf[64];
+	      int elem = (REGNO (src) - COP2_REG_FIRST) & 3;
+	      int base = REGNO (src) - elem;
+	      sprintf (buf, "mtcpusw\t%%0,$vr%d[%d]", base - COP2_REG_FIRST, elem);
+	      return buf;
+	    }
 
 	  if (ALL_COP_REG_P (REGNO (src)))
 	    {
@@ -5701,11 +5714,23 @@ mips_output_move (rtx dest, rtx src)
   /* MXU2: MEM->COP2 scalar: lw to $at, then insfcpuw.  */
   if (dest_code == REG && MXU2_REG_P (REGNO (dest))
       && ISA_HAS_MXU2 && src_code == MEM)
-    return "lw\t$1,%1\n\tinsfcpuw\t%w0[0],$1";
+    {
+      static char buf[80];
+      int elem = (REGNO (dest) - COP2_REG_FIRST) & 3;
+      int base = REGNO (dest) - elem;
+      sprintf (buf, "lw\t$1,%%1\n\tinsfcpuw\t$vr%d[%d],$1", base - COP2_REG_FIRST, elem);
+      return buf;
+    }
   /* MXU2: COP2->MEM scalar: mtcpusw to $at, then sw.  */
   if (dest_code == MEM && src_code == REG
       && MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
-    return "mtcpusw\t$1,%w1[0]\n\tsw\t$1,%0";
+    {
+      static char buf[80];
+      int elem = (REGNO (src) - COP2_REG_FIRST) & 3;
+      int base = REGNO (src) - elem;
+      sprintf (buf, "mtcpusw\t$1,$vr%d[%d]\n\tsw\t$1,%%0", base - COP2_REG_FIRST, elem);
+      return buf;
+    }
 
   if (dest_code == REG && ALL_COP_REG_P (REGNO (dest)) && src_code == MEM)
     {
@@ -13528,12 +13553,18 @@ mips_hard_regno_mode_ok_uncached (unsigned int regno, machine_mode mode)
 	}
     }
 
-  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.
-     When MXU2 is enabled, COP2 regs can ONLY hold vector modes —
-     prevent scalar SImode to avoid mtc2/mfc2 which the assembler
-     doesn't accept with $vr register names.  */
-  if (MXU2_REG_P (regno))
-    return ISA_HAS_MXU2 && MXU2_SUPPORTED_MODE_P (mode);
+  /* For MXU2, COP2 regs hold 128-bit vector modes.  Also allow SImode
+     since V4SI uses 4 consecutive COP2 regs and subreg:SI element
+     access needs SImode support.  Require 4-register alignment for
+     vector modes.  */
+  if (MXU2_REG_P (regno) && ISA_HAS_MXU2)
+    {
+      if (MXU2_SUPPORTED_MODE_P (mode))
+	return ((regno - COP2_REG_FIRST) & 3) == 0;
+      if (mode == SImode)
+	return true;
+      return false;
+    }
 
   if (ALL_COP_REG_P (regno))
     return mclass == MODE_INT && size <= UNITS_PER_WORD;
@@ -13610,9 +13641,11 @@ mips_hard_regno_nregs (unsigned int regno, machine_mode mode)
        CCmode values, and CCmode is always considered to be 4 bytes wide.  */
     return (GET_MODE_SIZE (mode) + 3) / 4;
 
-  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.  */
+  /* For MXU2, 128-bit vector modes use 4 consecutive COP2 regs so that
+     subreg:SI at different byte offsets map to different register numbers,
+     preserving element index information for insfcpuw/mtcpusw output.  */
   if (MXU2_REG_P (regno) && MXU2_SUPPORTED_MODE_P (mode))
-    return true;
+    return 4;
 
   if (FP_REG_P (regno))
     {
