@@ -6,21 +6,6 @@ Subject: [PATCH] add Ingenic MXU2 backend support
 Add native GCC backend support for Ingenic MXU2 128-bit SIMD extension.
 MXU2 uses COP2 registers ($vr0-$vr31) for 128-bit vector operations
 on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
-
-New files:
-  - mips-mxu2.md: 141 instruction patterns for all MXU2 operations
-  - ingenic-mxu2.def: 364 builtin definitions (__builtin_mxu2_*)
-  - mxu2.h: intrinsics header with 368 inline wrappers
-
-Modified files:
-  - mips.opt: -mmxu2 flag
-  - mips.h: ISA_HAS_MXU2, register definitions, COP2 support
-  - mips.cc: full infrastructure port (33 MXU2 refs - register allocation,
-    moves, loads, stores, addressing, reload)
-  - constraints.md: "q" constraint for COP2_REGS
-  - predicates.md: MXU2-specific predicates
-  - mips-protos.h: helper function declarations
-  - mips.md: include mips-mxu2.md
 ---
 --- a/gcc/config/mips/constraints.md
 +++ b/gcc/config/mips/constraints.md
@@ -293,7 +278,18 @@ Modified files:
      return ((regno - GP_REG_FIRST) & 1) == 0 || size <= UNITS_PER_WORD;
  
    /* For MSA, allow TImode and 128-bit vector modes in all FPR.  */
-@@ -13429,6 +13530,10 @@
+@@ -13354,6 +13455,10 @@
+ 	}
+     }
+ 
++  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.  */
++  if (MXU2_REG_P (regno) && MXU2_SUPPORTED_MODE_P (mode))
++    return true;
++
+   if (ALL_COP_REG_P (regno))
+     return mclass == MODE_INT && size <= UNITS_PER_WORD;
+ 
+@@ -13429,6 +13534,10 @@
         CCmode values, and CCmode is always considered to be 4 bytes wide.  */
      return (GET_MODE_SIZE (mode) + 3) / 4;
  
@@ -304,7 +300,7 @@ Modified files:
    if (FP_REG_P (regno))
      {
        if (MSA_SUPPORTED_MODE_P (mode))
-@@ -13459,6 +13564,15 @@
+@@ -13459,6 +13568,15 @@
  
        left &= ~reg_class_contents[ST_REGS];
      }
@@ -320,7 +316,7 @@ Modified files:
    if (hard_reg_set_intersect_p (left, reg_class_contents[(int) FP_REGS]))
      {
        if (mips_hard_regno_mode_ok (FP_REG_FIRST, mode))
-@@ -13492,6 +13606,10 @@
+@@ -13492,6 +13610,10 @@
    if (MSA_SUPPORTED_MODE_P (from) && MSA_SUPPORTED_MODE_P (to))
      return true;
  
@@ -331,7 +327,7 @@ Modified files:
    /* Otherwise, there are several problems with changing the modes of
       values in floating-point registers:
  
-@@ -13546,7 +13664,7 @@
+@@ -13546,7 +13668,7 @@
        return TARGET_HARD_FLOAT && TARGET_PAIRED_SINGLE_FLOAT;
  
      default:
@@ -340,7 +336,7 @@ Modified files:
      }
  }
  
-@@ -13825,6 +13943,14 @@
+@@ -13825,6 +13947,14 @@
        /* Otherwise, we need to reload through an integer register.  */
        return GR_REGS;
      }
@@ -355,7 +351,7 @@ Modified files:
    if (FP_REG_P (regno))
      return reg_class_subset_p (rclass, GR_REGS) ? NO_REGS : GR_REGS;
  
-@@ -15775,6 +15901,7 @@
+@@ -15775,6 +15905,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
  AVAIL_NON_MIPS16 (msa, TARGET_MSA)
@@ -363,7 +359,7 @@ Modified files:
  AVAIL_NON_MIPS16 (r6, mips_isa_rev >= 6)
  
  /* Construct a mips_builtin_description from the given arguments.
-@@ -17015,6 +17142,8 @@
+@@ -17015,6 +17146,8 @@
    MSA_BUILTIN_PURE (cfcmsa, MIPS_SI_FTYPE_UQI),
    MSA_BUILTIN_PURE (move_v, MIPS_V16QI_FTYPE_V16QI),
  
@@ -372,7 +368,7 @@ Modified files:
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -20232,6 +20361,9 @@
+@@ -20232,6 +20365,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -382,7 +378,7 @@ Modified files:
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21246,16 @@
+@@ -21114,6 +21250,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
