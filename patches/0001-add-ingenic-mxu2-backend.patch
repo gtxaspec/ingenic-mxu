@@ -3352,3 +3352,14 @@ Modified files:
 +#endif /* __clang__ */
 +#endif /* defined(__mips_mxu2) */
 +#endif /* _MXU2_H */
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -485,7 +485,7 @@
+ mips*-*-*)
+ 	cpu_type=mips
+ 	d_target_objs="mips-d.o"
+-	extra_headers="loongson.h loongson-mmiintrin.h msa.h"
++	extra_headers="loongson.h loongson-mmiintrin.h msa.h mxu2.h"
+ 	extra_objs="frame-header-opt.o"
+ 	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
+ 	;;
