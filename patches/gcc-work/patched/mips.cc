@@ -17768,17 +17768,17 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 	}
       break;
 
-    /* MXU2 immediate byte bitwise: convert scalar to byte vector.  */
+    /* MXU2 immediate byte bitwise: scalar const_uimm8, no conversion.  */
     case CODE_FOR_mxu2_andib:
     case CODE_FOR_mxu2_orib:
     case CODE_FOR_mxu2_norib:
     case CODE_FOR_mxu2_xorib:
       gcc_assert (has_target_p && nops == 3);
-      if (!CONST_INT_P (ops[2].value))
-	break;
-      ops[2].mode = ops[0].mode;
-      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
-						INTVAL (ops[2].value));
+      if (CONST_INT_P (ops[2].value))
+	{
+	  if (!IN_RANGE (INTVAL (ops[2].value), 0, 255))
+	    error_opno = 2;
+	}
       break;
 
     case CODE_FOR_msa_insert_b:
