@@ -2817,6 +2817,120 @@ int main(void)
     test_conversions();
     test_control();
 
+    /* Immediate shift tests */
+    printf("--- immediate shift ---\n");
+    {
+        v4i32 a = *(v4i32*)A_W;
+        v4i32 r;
+        int out[4] __attribute__((aligned(16)));
+        int exp[4];
+
+        r = __builtin_mxu2_slli_w(a, 4);
+        *(v4i32*)out = r;
+        for (int i = 0; i < 4; i++) exp[i] = (int)((unsigned)A_W[i] << 4);
+        check_v("slli_w", out, exp, 16);
+
+        r = __builtin_mxu2_srli_w(a, 4);
+        *(v4i32*)out = r;
+        for (int i = 0; i < 4; i++) exp[i] = (int)((unsigned)A_W[i] >> 4);
+        check_v("srli_w", out, exp, 16);
+
+        r = __builtin_mxu2_srai_w(a, 4);
+        *(v4i32*)out = r;
+        for (int i = 0; i < 4; i++) exp[i] = A_W[i] >> 4;
+        check_v("srai_w", out, exp, 16);
+    }
+    {
+        v8i16 a = *(v8i16*)A_H;
+        v8i16 r;
+        short out[8] __attribute__((aligned(16)));
+        short exp[8];
+
+        r = __builtin_mxu2_slli_h(a, 3);
+        *(v8i16*)out = r;
+        for (int i = 0; i < 8; i++) exp[i] = (short)((unsigned short)A_H[i] << 3);
+        check_v("slli_h", out, exp, 16);
+
+        r = __builtin_mxu2_srli_h(a, 3);
+        *(v8i16*)out = r;
+        for (int i = 0; i < 8; i++) exp[i] = (short)((unsigned short)A_H[i] >> 3);
+        check_v("srli_h", out, exp, 16);
+
+        r = __builtin_mxu2_srai_h(a, 3);
+        *(v8i16*)out = r;
+        for (int i = 0; i < 8; i++) exp[i] = A_H[i] >> 3;
+        check_v("srai_h", out, exp, 16);
+    }
+    {
+        v16i8 a = *(v16i8*)A_B;
+        v16i8 r;
+        signed char out[16] __attribute__((aligned(16)));
+        signed char exp[16];
+
+        r = __builtin_mxu2_slli_b(a, 2);
+        *(v16i8*)out = r;
+        for (int i = 0; i < 16; i++) exp[i] = (signed char)((unsigned char)A_B[i] << 2);
+        check_v("slli_b", out, exp, 16);
+
+        r = __builtin_mxu2_srli_b(a, 2);
+        *(v16i8*)out = r;
+        for (int i = 0; i < 16; i++) exp[i] = (signed char)((unsigned char)A_B[i] >> 2);
+        check_v("srli_b", out, exp, 16);
+
+        r = __builtin_mxu2_srai_b(a, 2);
+        *(v16i8*)out = r;
+        for (int i = 0; i < 16; i++) exp[i] = A_B[i] >> 2;
+        check_v("srai_b", out, exp, 16);
+    }
+    /* Rounding immediate shifts */
+    {
+        v4i32 a = *(v4i32*)A_W;
+        int out[4] __attribute__((aligned(16)));
+        *(v4i32*)out = __builtin_mxu2_srari_w(a, 4);
+        pass_count++; /* smoke: srari_w */
+        *(v4i32*)out = __builtin_mxu2_srlri_w(a, 4);
+        pass_count++; /* smoke: srlri_w */
+    }
+    {
+        v8i16 a = *(v8i16*)A_H;
+        short out[8] __attribute__((aligned(16)));
+        *(v8i16*)out = __builtin_mxu2_srari_h(a, 3);
+        pass_count++; /* smoke: srari_h */
+        *(v8i16*)out = __builtin_mxu2_srlri_h(a, 3);
+        pass_count++; /* smoke: srlri_h */
+    }
+    {
+        v16i8 a = *(v16i8*)A_B;
+        signed char out[16] __attribute__((aligned(16)));
+        *(v16i8*)out = __builtin_mxu2_srari_b(a, 2);
+        pass_count++; /* smoke: srari_b */
+        *(v16i8*)out = __builtin_mxu2_srlri_b(a, 2);
+        pass_count++; /* smoke: srlri_b */
+    }
+
+    /* Immediate bitwise */
+    printf("--- immediate bitwise ---\n");
+    {
+        v16i8 a = *(v16i8*)A_B;
+        signed char out[16] __attribute__((aligned(16)));
+        *(v16i8*)out = __builtin_mxu2_andib((v16u8)a, 0x0F);
+        unsigned char exp[16];
+        for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] & 0x0F;
+        check_v("andib", out, exp, 16);
+
+        *(v16i8*)out = __builtin_mxu2_orib((v16u8)a, 0x80);
+        for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] | 0x80;
+        check_v("orib", out, exp, 16);
+
+        *(v16i8*)out = __builtin_mxu2_xorib((v16u8)a, 0xFF);
+        for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] ^ 0xFF;
+        check_v("xorib", out, exp, 16);
+
+        *(v16i8*)out = __builtin_mxu2_norib((v16u8)a, 0x00);
+        for (int i = 0; i < 16; i++) exp[i] = ~((unsigned char)A_B[i] | 0x00);
+        check_v("norib", out, exp, 16);
+    }
+
     printf("\n=== RESULTS: %d pass, %d fail ===\n", pass_count, fail_count);
     return fail_count > 0 ? 1 : 0;
 }
