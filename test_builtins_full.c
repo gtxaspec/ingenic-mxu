@@ -2882,6 +2882,24 @@ int main(void)
         for (int i = 0; i < 16; i++) exp[i] = A_B[i] >> 2;
         check_v("srai_b", out, exp, 16);
     }
+    /* Doubleword immediate shifts */
+    {
+        v2i64 a = *(v2i64*)A_D;
+        long long out[2] __attribute__((aligned(16)));
+
+        *(v2i64*)out = __builtin_mxu2_slli_d(a, 8);
+        long long exp[2];
+        for (int i = 0; i < 2; i++) exp[i] = (long long)((unsigned long long)A_D[i] << 8);
+        check_v("slli_d", out, exp, 16);
+
+        *(v2i64*)out = __builtin_mxu2_srli_d(a, 8);
+        for (int i = 0; i < 2; i++) exp[i] = (long long)((unsigned long long)A_D[i] >> 8);
+        check_v("srli_d", out, exp, 16);
+
+        *(v2i64*)out = __builtin_mxu2_srai_d(a, 8);
+        for (int i = 0; i < 2; i++) exp[i] = A_D[i] >> 8;
+        check_v("srai_d", out, exp, 16);
+    }
     /* Rounding immediate shifts */
     {
         v4i32 a = *(v4i32*)A_W;
@@ -2890,6 +2908,14 @@ int main(void)
         pass_count++; /* smoke: srari_w */
         *(v4i32*)out = __builtin_mxu2_srlri_w(a, 4);
         pass_count++; /* smoke: srlri_w */
+    }
+    {
+        v2i64 a = *(v2i64*)A_D;
+        long long out[2] __attribute__((aligned(16)));
+        *(v2i64*)out = __builtin_mxu2_srari_d(a, 8);
+        pass_count++; /* smoke: srari_d */
+        *(v2i64*)out = __builtin_mxu2_srlri_d(a, 8);
+        pass_count++; /* smoke: srlri_d */
     }
     {
         v8i16 a = *(v8i16*)A_H;
