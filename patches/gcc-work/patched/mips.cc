@@ -13458,6 +13458,10 @@ mips_hard_regno_nregs (unsigned int regno, machine_mode mode)
        CCmode values, and CCmode is always considered to be 4 bytes wide.  */
     return (GET_MODE_SIZE (mode) + 3) / 4;
 
+  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.  */
+  if (MXU2_REG_P (regno) && MXU2_SUPPORTED_MODE_P (mode))
+    return true;
+
   if (FP_REG_P (regno))
     {
       if (MSA_SUPPORTED_MODE_P (mode))
@@ -13487,6 +13491,15 @@ mips_class_max_nregs (enum reg_class rclass, machine_mode mode)
 	size = MIN (size, 4);
 
       left &= ~reg_class_contents[ST_REGS];
+    }
+  if (hard_reg_set_intersect_p (left, reg_class_contents[(int) COP2_REGS]))
+    {
+      if (mips_hard_regno_mode_ok (COP2_REG_FIRST, mode)
+	  && MXU2_SUPPORTED_MODE_P (mode))
+	{
+	  size = MIN (size, UNITS_PER_MXU2_REG);
+	  left &= ~reg_class_contents[(int) COP2_REGS];
+	}
     }
   if (hard_reg_set_intersect_p (left, reg_class_contents[(int) FP_REGS]))
     {
