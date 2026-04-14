@@ -5531,9 +5531,11 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmtc1\t%z1,%0" : "mtc1\t%z1,%0";
 	    }
 
-	  /* MXU2: use mfcpuw (GP->COP2 broadcast) instead of mtc2.  */
+	  /* MXU2: GP->COP2 scalar: store GP to stack temp, lu1q.
+	     Note: mfcpuw broadcasts to ALL elements which clobbers
+	     the register.  Use stack-based transfer instead.  */
 	  if (MXU2_REG_P (REGNO (dest)) && ISA_HAS_MXU2)
-	    return "mfcpuw\t%w0,%z1";
+	    return "sw\t%z1,-16($sp)\n\tlu1q\t%w0,-16($sp)";
 
 	  if (ALL_COP_REG_P (REGNO (dest)))
 	    {
