@@ -5347,6 +5347,7 @@ mips_output_move (rtx dest, rtx src)
   machine_mode mode = GET_MODE (dest);
   bool dbl_p = (GET_MODE_SIZE (mode) == 8);
   bool msa_p = MSA_SUPPORTED_MODE_P (mode);
+  bool mxu2_p = MXU2_SUPPORTED_MODE_P (mode);
   enum mips_symbol_type symbol_type;
 
   if (mips_split_move_p (dest, src, SPLIT_IF_NECESSARY))
@@ -5359,6 +5360,14 @@ mips_output_move (rtx dest, rtx src)
     {
       gcc_assert (mips_const_vector_same_int_p (src, mode, -512, 511));
       return "ldi.%v0\t%w0,%E1";
+    }
+  if (mxu2_p
+      && dest_code == REG && MXU2_REG_P (REGNO (dest))
+      && src_code == CONST_VECTOR
+      && CONST_INT_P (CONST_VECTOR_ELT (src, 0)))
+    {
+      gcc_assert (mips_const_vector_same_int_p (src, mode, -16384, 16383));
+      return "li%v0\t%w0,%E1";
     }
 
   if ((src_code == REG && GP_REG_P (REGNO (src)))
@@ -5512,6 +5521,13 @@ mips_output_move (rtx dest, rtx src)
 	  return dbl_p ? "dla\t%0,%1" : "la\t%0,%1";
 	}
     }
+  if (src_code == REG && MXU2_REG_P (REGNO (src)) && mxu2_p)
+    {
+      if (dest_code == REG && MXU2_REG_P (REGNO (dest)))
+	return "orv\t%w0,%w1,%w1";
+      if (dest_code == MEM)
+	return "su1q\t%w1,%0";
+    }
   if (src_code == REG && FP_REG_P (REGNO (src)))
     {
       if (dest_code == REG && FP_REG_P (REGNO (dest)))
@@ -5531,6 +5547,11 @@ mips_output_move (rtx dest, rtx src)
 
 	  return dbl_p ? "sdc1\t%1,%0" : "swc1\t%1,%0";
 	}
+    }
+  if (dest_code == REG && MXU2_REG_P (REGNO (dest)) && mxu2_p)
+    {
+      if (src_code == MEM)
+	return "lu1q\t%w0,%1";
     }
   if (dest_code == REG && FP_REG_P (REGNO (dest)))
     {
