@@ -2531,7 +2531,8 @@ mips_symbol_insns (enum mips_symbol_type type, machine_mode mode)
 {
   /* MSA LD.* and ST.* cannot support loading symbols via an immediate
      operand.  */
-  if (mode != MAX_MACHINE_MODE && MSA_SUPPORTED_MODE_P (mode))
+  if (mode != MAX_MACHINE_MODE
+      && (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode)))
     return 0;
 
   return mips_symbol_insns_1 (type, mode) * (TARGET_MIPS16 ? 2 : 1);
@@ -2658,9 +2659,10 @@ mips_valid_offset_p (rtx x, machine_mode mode)
     return false;
 
   /* MSA LD.* and ST.* supports 10-bit signed offsets.  */
-  if (MSA_SUPPORTED_MODE_P (mode)
+  if ((MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
       && !mips_signed_immediate_p (INTVAL (x), 10,
-				   mips_ldst_scaled_shift (mode)))
+				   MSA_SUPPORTED_MODE_P (mode)
+				   ? mips_ldst_scaled_shift (mode) : 0))
     return false;
 
   return true;
@@ -2690,7 +2692,7 @@ mips_valid_lo_sum_p (enum mips_symbol_type symbol_type, machine_mode mode)
     return false;
 
   /* MSA LD.* and ST.* cannot support loading symbols via %lo($base).  */
-  if (MSA_SUPPORTED_MODE_P (mode))
+  if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
     return false;
 
   return true;
@@ -2823,7 +2825,7 @@ mips_lx_address_p (rtx addr, machine_mode mode)
     return true;
   if (ISA_HAS_LDX && mode == DImode)
     return true;
-  if (MSA_SUPPORTED_MODE_P (mode))
+  if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
     return true;
   return false;
 }
@@ -2864,6 +2866,7 @@ mips_address_insns (rtx x, machine_mode mode, bool might_split_p)
   struct mips_address_info addr;
   int factor;
   bool msa_p = (!might_split_p && MSA_SUPPORTED_MODE_P (mode));
+  bool mxu2_p = (!might_split_p && MXU2_SUPPORTED_MODE_P (mode));
 
   /* BLKmode is used for single unaligned loads and stores and should
      not count as a multiword mode.  (GET_MODE_SIZE (BLKmode) is pretty
@@ -2878,9 +2881,9 @@ mips_address_insns (rtx x, machine_mode mode, bool might_split_p)
     switch (addr.type)
       {
       case ADDRESS_REG:
-	if (msa_p)
+	if (msa_p || mxu2_p)
 	  {
-	    /* MSA LD.* and ST.* supports 10-bit signed offsets.  */
+	    /* MSA and MXU2 LD.* and ST.* supports 10-bit signed offsets.  */
 	    if (mips_signed_immediate_p (INTVAL (addr.offset), 10,
 					 mips_ldst_scaled_shift (mode)))
 	      return 1;
@@ -3039,8 +3042,10 @@ mips_const_insns (rtx x)
       return mips_build_integer (codes, INTVAL (x));
 
     case CONST_VECTOR:
-      if (MSA_SUPPORTED_MODE_P (GET_MODE (x))
-	  && mips_const_vector_same_int_p (x, GET_MODE (x), -512, 511))
+      if ((ISA_HAS_MSA && MSA_SUPPORTED_MODE_P (GET_MODE (x))
+	   && mips_const_vector_same_int_p (x, GET_MODE (x), -512, 511))
+	  || (ISA_HAS_MXU2 && MXU2_SUPPORTED_MODE_P (GET_MODE (x))
+	      && mips_const_vector_same_int_p (x, GET_MODE (x), -16384, 16383)))
 	return 1;
       /* Fall through.  */
     case CONST_DOUBLE:
@@ -3899,7 +3904,7 @@ mips_legitimize_move (machine_mode mode, rtx dest, rtx src)
   if (!register_operand (dest, mode)
       && !register_operand (src, mode)
       && (TARGET_MIPS16 || !const_0_operand (src, mode)
-	  || MSA_SUPPORTED_MODE_P (mode)))
+	  || MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode)))
     {
       mips_emit_move (dest, force_reg (mode, src));
       return true;
@@ -5002,7 +5007,8 @@ mips_split_move_p (rtx dest, rtx src, enum mips_split_type split_type)
     }
 
   /* Check if MSA moves need splitting.  */
-  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest)))
+  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest))
+      || MXU2_SUPPORTED_MODE_P (GET_MODE (dest)))
     return mips_split_128bit_move_p (dest, src);
 
   /* Otherwise split all multiword moves.  */
@@ -5019,7 +5025,8 @@ mips_split_move (rtx dest, rtx src, enum mips_split_type split_type, rtx insn_)
   rtx low_dest;
 
   gcc_checking_assert (mips_split_move_p (dest, src, split_type));
-  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest)))
+  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest))
+      || MXU2_SUPPORTED_MODE_P (GET_MODE (dest)))
     mips_split_128bit_move (dest, src);
   else if (FP_REG_RTX_P (dest) || FP_REG_RTX_P (src))
     {
@@ -5314,10 +5321,74 @@ mips_split_msa_fill_d (rtx dest, rtx src)
 }
 
 
-void mips_split_mxu2_insert_d(rtx d,rtx s1,rtx idx,rtx s2){rtx l,h,nd,ns;l=mips_subword(s2,false);h=mips_subword(s2,true);nd=simplify_gen_subreg(V4SImode,d,GET_MODE(d),0);ns=simplify_gen_subreg(V4SImode,s1,GET_MODE(s1),0);emit_insn(gen_mxu2_insfcpu_w(nd,ns,GEN_INT(INTVAL(idx)*2),l));emit_insn(gen_mxu2_insfcpu_w(nd,nd,GEN_INT(INTVAL(idx)*2+1),h));}
-void mips_split_mxu2_mfcpu_d(rtx d,rtx s){rtx l,h,nd;if(s==const0_rtx){l=s;h=s;}else{l=mips_subword(s,false);h=mips_subword(s,true);}nd=simplify_gen_subreg(V4SImode,d,GET_MODE(d),0);emit_insn(gen_mxu2_mfcpu_w(nd,l));emit_insn(gen_mxu2_insfcpu_w(nd,nd,const1_rtx,h));emit_insn(gen_mxu2_insfcpu_w(nd,nd,GEN_INT(3),h));}
-void mips_split_mxu2_mtcpu_d(rtx d,rtx s,rtx idx,rtx(*gf)(rtx,rtx,rtx)){rtx l,h,ns;l=mips_subword(d,false);h=mips_subword(d,true);ns=simplify_gen_subreg(V4SImode,s,GET_MODE(s),0);emit_insn(gf(l,ns,GEN_INT(INTVAL(idx)*2)));emit_insn(gf(h,ns,GEN_INT(INTVAL(idx)*2+1)));}
-void mips_expand_mxu2_branch(rtx*op,rtx(*gf)(rtx,rtx,rtx)){rtx lT=gen_label_rtx(),lE=gen_label_rtx(),t=gf(lT,op[1],const0_rtx);t=emit_jump_insn(t);JUMP_LABEL(t)=lT;emit_move_insn(op[0],const0_rtx);t=emit_jump_insn(gen_jump(lE));emit_barrier();JUMP_LABEL(t)=lE;emit_label(lT);LABEL_NUSES(lT)=1;emit_move_insn(op[0],const1_rtx);emit_label(lE);LABEL_NUSES(lE)=1;}
+/* Split MXU2 insfcpu.d.  */
+void
+mips_split_mxu2_insert_d (rtx dest, rtx src1, rtx index, rtx src2)
+{
+  rtx low, high, new_dest, new_src1;
+  gcc_assert (GET_MODE (dest) == GET_MODE (src1));
+  gcc_assert ((GET_MODE (dest) == V2DImode
+	       && (GET_MODE (src2) == DImode || src2 == const0_rtx)));
+  low = mips_subword (src2, false);
+  high = mips_subword (src2, true);
+  new_dest = simplify_gen_subreg (V4SImode, dest, GET_MODE (dest), 0);
+  new_src1 = simplify_gen_subreg (V4SImode, src1, GET_MODE (src1), 0);
+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_src1,
+				  GEN_INT (INTVAL (index) * 2), low));
+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest,
+				  GEN_INT (INTVAL (index) * 2 + 1), high));
+}
+
+/* Split MXU2 mfcpu.d.  */
+void
+mips_split_mxu2_mfcpu_d (rtx dest, rtx src)
+{
+  rtx low, high, new_dest;
+  gcc_assert ((GET_MODE (dest) == V2DImode
+	       && (GET_MODE (src) == DImode || src == const0_rtx)));
+  if (src == const0_rtx)
+    { low = src; high = src; }
+  else
+    { low = mips_subword (src, false); high = mips_subword (src, true); }
+  new_dest = simplify_gen_subreg (V4SImode, dest, GET_MODE (dest), 0);
+  emit_insn (gen_mxu2_mfcpu_w (new_dest, low));
+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest, const1_rtx, high));
+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest, GEN_INT (3), high));
+}
+
+/* Split MXU2 mtcpu.d.  */
+void
+mips_split_mxu2_mtcpu_d (rtx dest, rtx src, rtx index,
+			  rtx (*gen_fn)(rtx, rtx, rtx))
+{
+  rtx low, high, new_src;
+  gcc_assert ((GET_MODE (src) == V2DImode && GET_MODE (dest) == DImode));
+  low = mips_subword (dest, false);
+  high = mips_subword (dest, true);
+  new_src = simplify_gen_subreg (V4SImode, src, GET_MODE (src), 0);
+  emit_insn (gen_fn (low, new_src, GEN_INT (INTVAL (index) * 2)));
+  emit_insn (gen_fn (high, new_src, GEN_INT (INTVAL (index) * 2 + 1)));
+}
+
+/* Expand MXU2 branch.  */
+void
+mips_expand_mxu2_branch (rtx *operands, rtx (*gen_fn)(rtx, rtx, rtx))
+{
+  rtx labelT = gen_label_rtx ();
+  rtx labelE = gen_label_rtx ();
+  rtx tmp = gen_fn (labelT, operands[1], const0_rtx);
+  tmp = emit_jump_insn (tmp);
+  JUMP_LABEL (tmp) = labelT;
+  emit_move_insn (operands[0], const0_rtx);
+  tmp = emit_jump_insn (gen_jump (labelE));
+  emit_barrier ();
+  JUMP_LABEL (tmp) = labelE;
+  emit_label (labelT);
+  LABEL_NUSES (labelT) = 1;
+  emit_move_insn (operands[0], const1_rtx);
+  emit_label (labelE);
+  LABEL_NUSES (labelE) = 1;
+}
 
 /* Return true if a move from SRC to DEST in INSN should be split.  */
 
@@ -13307,7 +13378,8 @@ mips_hard_regno_mode_ok_uncached (unsigned int regno, machine_mode mode)
   size = GET_MODE_SIZE (mode);
   mclass = GET_MODE_CLASS (mode);
 
-  if (GP_REG_P (regno) && mode != CCFmode && !MSA_SUPPORTED_MODE_P (mode))
+  if (GP_REG_P (regno) && mode != CCFmode && !MSA_SUPPORTED_MODE_P (mode)
+      && !MXU2_SUPPORTED_MODE_P (mode))
     return ((regno - GP_REG_FIRST) & 1) == 0 || size <= UNITS_PER_WORD;
 
   /* For MSA, allow TImode and 128-bit vector modes in all FPR.  */
@@ -13532,6 +13604,10 @@ mips_can_change_mode_class (machine_mode from,
 
   /* Allow conversions between different MSA vector modes.  */
   if (MSA_SUPPORTED_MODE_P (from) && MSA_SUPPORTED_MODE_P (to))
+    return true;
+
+  /* Allow conversions between different MXU2 vector modes.  */
+  if (MXU2_SUPPORTED_MODE_P (from) && MXU2_SUPPORTED_MODE_P (to))
     return true;
 
   /* Otherwise, there are several problems with changing the modes of
@@ -13870,7 +13946,6 @@ mips_secondary_reload_class (enum reg_class rclass,
   if (reg_class_subset_p (rclass, COP2_REGS))
     {
       if (MEM_P (x) && MXU2_SUPPORTED_MODE_P (mode))
-	/* MXU2 lu1q/su1q can load/store directly.  */
 	return NO_REGS;
       if (GP_REG_P (regno))
 	return NO_REGS;
@@ -13928,7 +14003,7 @@ mips_vector_mode_supported_p (machine_mode mode)
       return TARGET_LOONGSON_MMI;
 
     default:
-      return MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode);
+      return MSA_SUPPORTED_MODE_P (mode);
     }
 }
 
@@ -21175,7 +21250,10 @@ mips_conditional_register_usage (void)
     {
       unsigned int regno;
       for (regno = COP2_REG_FIRST; regno < COP2_REG_LAST; regno++)
-	{ fixed_regs[regno] = 0; call_used_regs[regno] = 1; }
+	{
+	  fixed_regs[regno] = 0;
+	  call_used_regs[regno] = 1;
+	}
       fixed_regs[COP2_REG_LAST] = 1;
     }
 }

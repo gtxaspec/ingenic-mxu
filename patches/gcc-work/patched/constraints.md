@@ -26,7 +26,7 @@
 (define_register_constraint "t" "T_REG"
   "@internal")
 
-(define_register_constraint "f" "TARGET_MXU2 ? COP2_REGS : TARGET_HARD_FLOAT ? FP_REGS : NO_REGS"
+(define_register_constraint "f" "TARGET_HARD_FLOAT ? FP_REGS : NO_REGS"
   "A floating-point register (if available).")
 
 (define_register_constraint "h" "NO_REGS"
