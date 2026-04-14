@@ -5236,35 +5236,39 @@ mips_split_128bit_move (rtx dest, rtx src)
 	    emit_insn (gen_msa_copy_s_d (d, new_src, GEN_INT (index)));
 	}
     }
-  else if (MXU2_REG_RTX_P (dest) || MXU2_REG_RTX_P (src))
+  else if (MXU2_REG_RTX_P (dest))
     {
-      /* MXU2 COP2 <-> GP: go through a stack temporary.
-	 su1q COP2 to stack, then word-load to GP, or
-	 word-store GP to stack, then lu1q to COP2.  */
-      rtx mem = assign_stack_temp (GET_MODE (dest), 16);
-      if (MXU2_REG_RTX_P (src))
+      /* GP -> COP2: use insfcpuw to insert each word element.
+	 Like MSA's msa_insert_w but for COP2 registers.  */
+      gcc_assert (!MEM_P (src));
+
+      rtx new_dest = dest;
+      if (GET_MODE (dest) != V4SImode)
+	new_dest = simplify_gen_subreg (V4SImode, dest, GET_MODE (dest), 0);
+
+      for (byte = 0, index = 0; byte < GET_MODE_SIZE (TImode);
+	   byte += UNITS_PER_WORD, index++)
 	{
-	  /* COP2 -> GP: store to stack, then load words.  */
-	  mips_emit_move (mem, src);
-	  for (byte = 0; byte < GET_MODE_SIZE (TImode);
-	       byte += UNITS_PER_WORD)
-	    {
-	      d = mips_subword_at_byte (dest, byte);
-	      s = adjust_address (mem, SImode, byte);
-	      mips_emit_move (d, s);
-	    }
+	  s = mips_subword_at_byte (src, byte);
+	  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest, GEN_INT (index),
+					  force_reg (SImode, s)));
 	}
-      else
+    }
+  else if (MXU2_REG_RTX_P (src))
+    {
+      /* COP2 -> GP: use mtcpusw to extract each word element.
+	 Like MSA's msa_copy_s_w but for COP2 registers.  */
+      gcc_assert (!MEM_P (dest));
+
+      rtx new_src = src;
+      if (GET_MODE (src) != V4SImode)
+	new_src = simplify_gen_subreg (V4SImode, src, GET_MODE (src), 0);
+
+      for (byte = 0, index = 0; byte < GET_MODE_SIZE (TImode);
+	   byte += UNITS_PER_WORD, index++)
 	{
-	  /* GP -> COP2: store words to stack, then load vector.  */
-	  for (byte = 0; byte < GET_MODE_SIZE (TImode);
-	       byte += UNITS_PER_WORD)
-	    {
-	      s = mips_subword_at_byte (src, byte);
-	      d = adjust_address (mem, SImode, byte);
-	      mips_emit_move (d, s);
-	    }
-	  mips_emit_move (dest, mem);
+	  d = mips_subword_at_byte (dest, byte);
+	  emit_insn (gen_mxu2_mtcpus_w (d, new_src, GEN_INT (index)));
 	}
     }
   else
