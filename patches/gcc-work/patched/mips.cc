@@ -14007,7 +14007,7 @@ mips_vector_mode_supported_p (machine_mode mode)
       return TARGET_LOONGSON_MMI;
 
     default:
-      return MSA_SUPPORTED_MODE_P (mode);
+      return MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode);
     }
 }
 
