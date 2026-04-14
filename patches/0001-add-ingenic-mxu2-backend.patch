@@ -74,7 +74,7 @@
    UNSPEC_ADDRESS_FIRST
  ])
 --- a/gcc/config/mips/mips.h	2025-08-07 23:51:40.583349957 -0700
-+++ b/gcc/config/mips/mips.h	2026-04-13 19:01:55.736539953 -0700
++++ b/gcc/config/mips/mips.h	2026-04-13 19:06:40.011910855 -0700
 @@ -519,6 +519,12 @@
  	  builtin_define ("__mips_msa_width=128");			\
  	}								\
@@ -120,7 +120,7 @@
     BITS_PER_MSA_REG.  */
  #define BIGGEST_ALIGNMENT \
 -  (ISA_HAS_MSA ? BITS_PER_MSA_REG : MIPS_LONG_DOUBLE_TYPE_SIZE)
-+  ((ISA_HAS_MSA || ISA_HAS_MXU2) ? BITS_PER_MSA_REG
++  ((ISA_HAS_MSA || ISA_HAS_MXU2) ? BITS_PER_MSA_REG \
 +   : MIPS_LONG_DOUBLE_TYPE_SIZE)
  
  /* All accesses must be aligned.  */

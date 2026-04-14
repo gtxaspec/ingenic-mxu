@@ -1723,7 +1723,7 @@ FP_ASM_SPEC "\
    MIPS_LONG_DOUBLE_TYPE_SIZE, unless under MSA the bigggest alignment is
    BITS_PER_MSA_REG.  */
 #define BIGGEST_ALIGNMENT \
-  ((ISA_HAS_MSA || ISA_HAS_MXU2) ? BITS_PER_MSA_REG
+  ((ISA_HAS_MSA || ISA_HAS_MXU2) ? BITS_PER_MSA_REG \
    : MIPS_LONG_DOUBLE_TYPE_SIZE)
 
 /* All accesses must be aligned.  */
