@@ -201,7 +201,7 @@
  				    rtx (*) (rtx, rtx, rtx), bool);
  
 --- a/gcc/config/mips/mips.cc	2025-08-07 23:51:40.583349957 -0700
-+++ b/gcc/config/mips/mips.cc	2026-04-13 19:18:28.045947511 -0700
++++ b/gcc/config/mips/mips.cc	2026-04-13 19:36:39.070580686 -0700
 @@ -5313,6 +5313,12 @@
    emit_insn (gen_msa_insert_w (new_dest, high, new_dest, GEN_INT (1 << 3)));
  }
@@ -273,7 +273,34 @@
        else
  	output_operand_lossage ("invalid use of '%%%c'", letter);
        break;
-@@ -13546,7 +13575,7 @@
+@@ -13429,6 +13458,10 @@
+        CCmode values, and CCmode is always considered to be 4 bytes wide.  */
+     return (GET_MODE_SIZE (mode) + 3) / 4;
+ 
++  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.  */
++  if (MXU2_REG_P (regno) && MXU2_SUPPORTED_MODE_P (mode))
++    return true;
++
+   if (FP_REG_P (regno))
+     {
+       if (MSA_SUPPORTED_MODE_P (mode))
+@@ -13459,6 +13492,15 @@
+ 
+       left &= ~reg_class_contents[ST_REGS];
+     }
++  if (hard_reg_set_intersect_p (left, reg_class_contents[(int) COP2_REGS]))
++    {
++      if (mips_hard_regno_mode_ok (COP2_REG_FIRST, mode)
++	  && MXU2_SUPPORTED_MODE_P (mode))
++	{
++	  size = MIN (size, UNITS_PER_MXU2_REG);
++	  left &= ~reg_class_contents[(int) COP2_REGS];
++	}
++    }
+   if (hard_reg_set_intersect_p (left, reg_class_contents[(int) FP_REGS]))
+     {
+       if (mips_hard_regno_mode_ok (FP_REG_FIRST, mode))
+@@ -13546,7 +13588,7 @@
        return TARGET_HARD_FLOAT && TARGET_PAIRED_SINGLE_FLOAT;
  
      default:
@@ -282,7 +309,7 @@
      }
  }
  
-@@ -13877,7 +13906,7 @@
+@@ -13877,7 +13919,7 @@
        return TARGET_LOONGSON_MMI;
  
      default:
@@ -291,7 +318,7 @@
      }
  }
  
-@@ -15775,6 +15804,7 @@
+@@ -15775,6 +15817,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
  AVAIL_NON_MIPS16 (msa, TARGET_MSA)
@@ -299,7 +326,7 @@
  AVAIL_NON_MIPS16 (r6, mips_isa_rev >= 6)
  
  /* Construct a mips_builtin_description from the given arguments.
-@@ -17015,6 +17045,8 @@
+@@ -17015,6 +17058,8 @@
    MSA_BUILTIN_PURE (cfcmsa, MIPS_SI_FTYPE_UQI),
    MSA_BUILTIN_PURE (move_v, MIPS_V16QI_FTYPE_V16QI),
  
@@ -308,7 +335,7 @@
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -20232,6 +20264,9 @@
+@@ -20232,6 +20277,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -318,7 +345,7 @@
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21149,13 @@
+@@ -21114,6 +21162,13 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
