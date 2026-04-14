@@ -13690,7 +13690,17 @@ mips_can_change_mode_class (machine_mode from,
 
      We therefore disallow all mode changes involving FPRs.  */
 
-  return !reg_classes_intersect_p (FP_REGS, rclass);
+  if (reg_classes_intersect_p (FP_REGS, rclass))
+    return false;
+
+  /* MXU2 COP2 registers can only hold 128-bit vector modes.  Prevent
+     subreg access between vector and scalar modes — the hardware has
+     no mtc2/mfc2/lwc2/swc2 support for MXU2 registers.  */
+  if (ISA_HAS_MXU2 && reg_classes_intersect_p (COP2_REGS, rclass)
+      && MXU2_SUPPORTED_MODE_P (from) != MXU2_SUPPORTED_MODE_P (to))
+    return false;
+
+  return true;
 }
 
 /* Implement target hook small_register_classes_for_mode_p.  */
