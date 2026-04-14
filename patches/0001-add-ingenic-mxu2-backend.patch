@@ -1493,8 +1493,8 @@
 +MXU2_BUILTIN (li_w, MIPS_V4SI_FTYPE_HI),
 +MXU2_BUILTIN (li_d, MIPS_V2DI_FTYPE_HI),
 --- a/gcc/config/mips/mips-mxu2.md	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 19:46:27.237681403 -0700
-@@ -0,0 +1,1605 @@
++++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 20:17:43.675766390 -0700
+@@ -0,0 +1,1852 @@
 +;; Machine Description for MIPS INGENIC MXU2
 +;; Based on the Ingenic MXU2 XBurst@Instruction Set Arch Release Date: Nov. 18,2014
 +;; Contributed by Qian Liu (qian.liu@ingenic.com), Ingenic.
@@ -1690,6 +1690,253 @@
 +(define_mode_attr VHALFMODE [(V8HI "V16QI") (V4SI "V8HI") (V2DI "V4SI") (V2DF "V4SF")])
 +(define_mode_attr unitfmt [(V2DF "d") (V4SF "s")])
 +(define_mode_attr mxu2fmt_ivconv [(V2DF "l") (V4SF "w")])
++
++
++;; Standard vector operation patterns for MXU2.
++;; These enable C vector operations (a+b, a-b, etc.) and builtins
++;; that map through CODE_FOR_addv4si3, etc.
++
++(define_insn "add<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		    (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "add<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "sub<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(minus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		     (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "sub<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "mul<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(mult:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		    (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "mul<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "div<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(div:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		   (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "divs<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "udiv<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(udiv:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		    (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "divu<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "mod<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(mod:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		   (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "mods<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "umod<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(umod:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		     (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "modu<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "and<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(and:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		   (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "andv\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "ior<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(ior:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		   (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "orv\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "xor<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(xor:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		   (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "xorv\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "one_cmpl<mode>2"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(not:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "norv\t%w0,%w1,%w1"
++  [(set_attr "mode" "TI")])
++
++(define_insn "neg<mode>2"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(neg:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "sub<mxu2fmt>\t%w0,%w0,%w1"
++  [(set_attr "mode" "TI")])
++
++(define_insn "vashl<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(ashift:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		      (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "sll<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "vashr<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(ashiftrt:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++			(match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "sra<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "vlshr<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(lshiftrt:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++			(match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "srl<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "smax<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(smax:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		    (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "maxs<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "smin<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(smin:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		    (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "mins<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "umax<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(umax:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		     (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "maxu<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "umin<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(umin:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		     (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "minu<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "ssadd<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(ss_plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		       (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "addss<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "usadd<mode>3"
++  [(set (match_operand:IMXU2 0 "register_operand" "=q")
++	(us_plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
++		       (match_operand:IMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "adduu<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++;; Float operations
++(define_insn "add<mode>3"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(plus:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
++		    (match_operand:FMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fadd<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "sub<mode>3"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(minus:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
++		     (match_operand:FMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fsub<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "mul<mode>3"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(mult:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
++		    (match_operand:FMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fmul<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "div<mode>3"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(div:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
++		   (match_operand:FMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fdiv<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "sqrt<mode>2"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(sqrt:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fsqrt<mxu2fmt>\t%w0,%w1"
++  [(set_attr "mode" "TI")])
++
++(define_insn "smax<mode>3"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(smax:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
++		    (match_operand:FMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fmax<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++(define_insn "smin<mode>3"
++  [(set (match_operand:FMXU2 0 "register_operand" "=q")
++	(smin:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
++		    (match_operand:FMXU2 2 "register_operand" "q")))]
++  "ISA_HAS_MXU2"
++  "fmin<mxu2fmt>\t%w0,%w1,%w2"
++  [(set_attr "mode" "TI")])
++
++;; Vector move expand
++(define_expand "mov<mode>"
++  [(set (match_operand:MXU2 0)
++	(match_operand:MXU2 1))]
++  "ISA_HAS_MXU2"
++{
++  if (mips_legitimize_move (<MODE>mode, operands[0], operands[1]))
++    DONE;
++})
++
++;; Vector init
++(define_expand "vec_init<mode>"
++  [(match_operand:MXU2 0 "register_operand")
++   (match_operand:MXU2 1 "")]
++  "ISA_HAS_MXU2"
++{
++  mips_expand_vector_init (operands[0], operands[1]);
++  DONE;
++})
 +
 +;; lat_mult1 for B/H 5; W 7; D 10;
 +;; lat_mult2 for B 12 H 20 W 36 D 68
