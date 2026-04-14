@@ -201,7 +201,7 @@
  				    rtx (*) (rtx, rtx, rtx), bool);
  
 --- a/gcc/config/mips/mips.cc	2025-08-07 23:51:40.583349957 -0700
-+++ b/gcc/config/mips/mips.cc	2026-04-13 19:36:39.070580686 -0700
++++ b/gcc/config/mips/mips.cc	2026-04-13 19:55:41.866555746 -0700
 @@ -5313,6 +5313,12 @@
    emit_insn (gen_msa_insert_w (new_dest, high, new_dest, GEN_INT (1 << 3)));
  }
@@ -309,7 +309,23 @@
      }
  }
  
-@@ -13877,7 +13919,7 @@
+@@ -13825,6 +13867,15 @@
+       /* Otherwise, we need to reload through an integer register.  */
+       return GR_REGS;
+     }
++  if (reg_class_subset_p (rclass, COP2_REGS))
++    {
++      if (MEM_P (x) && MXU2_SUPPORTED_MODE_P (mode))
++	/* MXU2 lu1q/su1q can load/store directly.  */
++	return NO_REGS;
++      if (GP_REG_P (regno))
++	return NO_REGS;
++      return GR_REGS;
++    }
+   if (FP_REG_P (regno))
+     return reg_class_subset_p (rclass, GR_REGS) ? NO_REGS : GR_REGS;
+ 
+@@ -13877,7 +13928,7 @@
        return TARGET_LOONGSON_MMI;
  
      default:
@@ -318,7 +334,7 @@
      }
  }
  
-@@ -15775,6 +15817,7 @@
+@@ -15775,6 +15826,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
  AVAIL_NON_MIPS16 (msa, TARGET_MSA)
@@ -326,7 +342,7 @@
  AVAIL_NON_MIPS16 (r6, mips_isa_rev >= 6)
  
  /* Construct a mips_builtin_description from the given arguments.
-@@ -17015,6 +17058,8 @@
+@@ -17015,6 +17067,8 @@
    MSA_BUILTIN_PURE (cfcmsa, MIPS_SI_FTYPE_UQI),
    MSA_BUILTIN_PURE (move_v, MIPS_V16QI_FTYPE_V16QI),
  
@@ -335,7 +351,7 @@
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -20232,6 +20277,9 @@
+@@ -20232,6 +20286,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -345,7 +361,7 @@
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21162,13 @@
+@@ -21114,6 +21171,13 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
