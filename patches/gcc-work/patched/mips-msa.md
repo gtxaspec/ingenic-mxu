@@ -723,16 +723,18 @@
 
 ;; Integer operations
 (define_insn "add<mode>3"
-  [(set (match_operand:IMSA 0 "register_operand" "=f,f,f")
+  [(set (match_operand:IMSA 0 "register_operand" "=f,f,f,q")
 	(plus:IMSA
-	  (match_operand:IMSA 1 "register_operand" "f,f,f")
-	  (match_operand:IMSA 2 "reg_or_vector_same_ximm5_operand" "f,Unv5,Uuv5")))]
-  "ISA_HAS_MSA"
+	  (match_operand:IMSA 1 "register_operand" "f,f,f,q")
+	  (match_operand:IMSA 2 "reg_or_vector_same_ximm5_operand" "f,Unv5,Uuv5,q")))]
+  "ISA_HAS_MSA || ISA_HAS_MXU2"
 {
   switch (which_alternative)
     {
     case 0:
       return "addv.<msafmt>\t%w0,%w1,%w2";
+    case 3:
+      return "add<msafmt>\t%w0,%w1,%w2";
     case 1:
       {
 	HOST_WIDE_INT val = INTVAL (CONST_VECTOR_ELT (operands[2], 0));
