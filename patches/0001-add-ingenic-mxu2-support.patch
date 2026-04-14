@@ -565,8 +565,20 @@ binutils 2.44.
      }
  
    obstack_init (&mips_operand_tokens);
-@@ -5087,6 +5103,12 @@
- 
+@@ -5074,8 +5090,10 @@
+
+     case OP_REG_COPRO:
+     case OP_REG_CONTROL:
+-      if (opcode->name[strlen (opcode->name) - 1] == '0')
++      if (opcode->name[strlen (opcode->name) - 1] == '0')
+ 	return RTYPE_NUM | RTYPE_CP0;
++      if (opcode->name[strlen (opcode->name) - 1] == '2')
++	return RTYPE_NUM | RTYPE_MXU128;
+       return RTYPE_NUM;
+
+     case OP_REG_HW:
+@@ -5087,6 +5105,12 @@
+
      case OP_REG_MSA_CTRL:
        return RTYPE_NUM;
 +
