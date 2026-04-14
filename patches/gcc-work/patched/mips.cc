@@ -3139,7 +3139,10 @@ mips_load_store_insns (rtx mem, rtx_insn *insn)
   bool might_split_p;
   rtx set;
 
-  gcc_assert (MEM_P (mem));
+  /* MXU2 load/store builtins may pass non-MEM operands through
+     cost calculation paths.  Return a default cost.  */
+  if (!MEM_P (mem))
+    return 1;
   mode = GET_MODE (mem);
 
   /* Try to prove that INSN does not need to be split.  */
@@ -5718,7 +5721,7 @@ mips_output_move (rtx dest, rtx src)
       static char buf[80];
       int elem = (REGNO (dest) - COP2_REG_FIRST) & 3;
       int base = REGNO (dest) - elem;
-      sprintf (buf, "lw\t$1,%%1\n\tinsfcpuw\t$vr%d[%d],$1", base - COP2_REG_FIRST, elem);
+      sprintf (buf, ".set\tnoat\n\tlw\t$1,%%1\n\tinsfcpuw\t$vr%d[%d],$1\n\t.set\tat", base - COP2_REG_FIRST, elem);
       return buf;
     }
   /* MXU2: COP2->MEM scalar: mtcpusw to $at, then sw.  */
@@ -5728,7 +5731,7 @@ mips_output_move (rtx dest, rtx src)
       static char buf[80];
       int elem = (REGNO (src) - COP2_REG_FIRST) & 3;
       int base = REGNO (src) - elem;
-      sprintf (buf, "mtcpusw\t$1,$vr%d[%d]\n\tsw\t$1,%%0", base - COP2_REG_FIRST, elem);
+      sprintf (buf, ".set\tnoat\n\tmtcpusw\t$1,$vr%d[%d]\n\tsw\t$1,%%0\n\t.set\tat", base - COP2_REG_FIRST, elem);
       return buf;
     }
 
