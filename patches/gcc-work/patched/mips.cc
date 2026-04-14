@@ -13867,6 +13867,15 @@ mips_secondary_reload_class (enum reg_class rclass,
       /* Otherwise, we need to reload through an integer register.  */
       return GR_REGS;
     }
+  if (reg_class_subset_p (rclass, COP2_REGS))
+    {
+      if (MEM_P (x) && MXU2_SUPPORTED_MODE_P (mode))
+	/* MXU2 lu1q/su1q can load/store directly.  */
+	return NO_REGS;
+      if (GP_REG_P (regno))
+	return NO_REGS;
+      return GR_REGS;
+    }
   if (FP_REG_P (regno))
     return reg_class_subset_p (rclass, GR_REGS) ? NO_REGS : GR_REGS;
 
