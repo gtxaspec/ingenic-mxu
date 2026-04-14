@@ -540,7 +540,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -17465,6 +17717,70 @@
+@@ -17465,6 +17717,68 @@
  	}
        break;
  
@@ -595,23 +595,21 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +	}
 +      break;
 +
-+    /* MXU2 immediate byte bitwise: scalar const_uimm8, no conversion.  */
++    /* MXU2 immediate byte bitwise: scalar const_uimm8, no conversion.
++       Mask to 8 bits since GCC may sign-extend the UQI argument.  */
 +    case CODE_FOR_mxu2_andib:
 +    case CODE_FOR_mxu2_orib:
 +    case CODE_FOR_mxu2_norib:
 +    case CODE_FOR_mxu2_xorib:
 +      gcc_assert (has_target_p && nops == 3);
 +      if (CONST_INT_P (ops[2].value))
-+	{
-+	  if (!IN_RANGE (INTVAL (ops[2].value), 0, 255))
-+	    error_opno = 2;
-+	}
++	ops[2].value = GEN_INT (INTVAL (ops[2].value) & 0xFF);
 +      break;
 +
      case CODE_FOR_msa_insert_b:
      case CODE_FOR_msa_insert_h:
      case CODE_FOR_msa_insert_w:
-@@ -20232,6 +20548,9 @@
+@@ -20232,6 +20546,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -621,7 +619,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21433,16 @@
+@@ -21114,6 +21431,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
