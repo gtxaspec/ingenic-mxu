@@ -17717,6 +17717,56 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 	}
       break;
 
+    /* MXU2 immediate shifts: convert scalar immediate to vector constant.  */
+    case CODE_FOR_mxu2_vashlv16qi3:
+    case CODE_FOR_mxu2_vashlv8hi3:
+    case CODE_FOR_mxu2_vashlv4si3:
+    case CODE_FOR_mxu2_vashlv2di3:
+    case CODE_FOR_mxu2_vashrv16qi3:
+    case CODE_FOR_mxu2_vashrv8hi3:
+    case CODE_FOR_mxu2_vashrv4si3:
+    case CODE_FOR_mxu2_vashrv2di3:
+    case CODE_FOR_mxu2_vlshrv16qi3:
+    case CODE_FOR_mxu2_vlshrv8hi3:
+    case CODE_FOR_mxu2_vlshrv4si3:
+    case CODE_FOR_mxu2_vlshrv2di3:
+    case CODE_FOR_mxu2_srari_b:
+    case CODE_FOR_mxu2_srari_h:
+    case CODE_FOR_mxu2_srari_w:
+    case CODE_FOR_mxu2_srari_d:
+    case CODE_FOR_mxu2_srlri_b:
+    case CODE_FOR_mxu2_srlri_h:
+    case CODE_FOR_mxu2_srlri_w:
+    case CODE_FOR_mxu2_srlri_d:
+      gcc_assert (has_target_p && nops == 3);
+      if (CONST_INT_P (ops[2].value))
+	{
+	  rangelo = 0;
+	  rangehi = GET_MODE_UNIT_BITSIZE (ops[0].mode) - 1;
+	  if (IN_RANGE (INTVAL (ops[2].value), rangelo, rangehi))
+	    {
+	      ops[2].mode = ops[0].mode;
+	      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
+							INTVAL (ops[2].value));
+	    }
+	  else
+	    error_opno = 2;
+	}
+      break;
+
+    /* MXU2 immediate byte bitwise: convert scalar to byte vector.  */
+    case CODE_FOR_mxu2_andib:
+    case CODE_FOR_mxu2_orib:
+    case CODE_FOR_mxu2_norib:
+    case CODE_FOR_mxu2_xorib:
+      gcc_assert (has_target_p && nops == 3);
+      if (!CONST_INT_P (ops[2].value))
+	break;
+      ops[2].mode = ops[0].mode;
+      ops[2].value = mips_gen_const_int_vector (ops[2].mode,
+						INTVAL (ops[2].value));
+      break;
+
     case CODE_FOR_msa_insert_b:
     case CODE_FOR_msa_insert_h:
     case CODE_FOR_msa_insert_w:
