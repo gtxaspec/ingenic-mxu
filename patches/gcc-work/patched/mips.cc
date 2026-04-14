@@ -5152,6 +5152,25 @@ mips_split_128bit_move_p (rtx dest, rtx src)
   if (FP_REG_RTX_P (dest) && src == CONST0_RTX (GET_MODE (src)))
     return false;
 
+  /* MXU2 COP2-to-COP2 moves can be done in a single instruction (orv).  */
+  if (MXU2_REG_RTX_P (src) && MXU2_REG_RTX_P (dest))
+    return false;
+
+  /* MXU2 loads and stores use lu1q/su1q.  */
+  if (MXU2_REG_RTX_P (dest) && MEM_P (src))
+    return false;
+  if (MXU2_REG_RTX_P (src) && MEM_P (dest))
+    return false;
+
+  /* MXU2 set to immediate const vector.  */
+  if (MXU2_REG_RTX_P (dest)
+      && mips_const_vector_same_int_p (src, GET_MODE (src), -16384, 16383))
+    return false;
+
+  /* MXU2 load zero immediate.  */
+  if (MXU2_REG_RTX_P (dest) && src == CONST0_RTX (GET_MODE (src)))
+    return false;
+
   return true;
 }
 
@@ -5215,6 +5234,37 @@ mips_split_128bit_move (rtx dest, rtx src)
 	    emit_insn (gen_msa_copy_s_w (d, new_src, GEN_INT (index)));
 	  else
 	    emit_insn (gen_msa_copy_s_d (d, new_src, GEN_INT (index)));
+	}
+    }
+  else if (MXU2_REG_RTX_P (dest) || MXU2_REG_RTX_P (src))
+    {
+      /* MXU2 COP2 <-> GP: go through a stack temporary.
+	 su1q COP2 to stack, then word-load to GP, or
+	 word-store GP to stack, then lu1q to COP2.  */
+      rtx mem = assign_stack_temp (GET_MODE (dest), 16);
+      if (MXU2_REG_RTX_P (src))
+	{
+	  /* COP2 -> GP: store to stack, then load words.  */
+	  mips_emit_move (mem, src);
+	  for (byte = 0; byte < GET_MODE_SIZE (TImode);
+	       byte += UNITS_PER_WORD)
+	    {
+	      d = mips_subword_at_byte (dest, byte);
+	      s = adjust_address (mem, SImode, byte);
+	      mips_emit_move (d, s);
+	    }
+	}
+      else
+	{
+	  /* GP -> COP2: store words to stack, then load vector.  */
+	  for (byte = 0; byte < GET_MODE_SIZE (TImode);
+	       byte += UNITS_PER_WORD)
+	    {
+	      s = mips_subword_at_byte (src, byte);
+	      d = adjust_address (mem, SImode, byte);
+	      mips_emit_move (d, s);
+	    }
+	  mips_emit_move (dest, mem);
 	}
     }
   else
@@ -13455,9 +13505,12 @@ mips_hard_regno_mode_ok_uncached (unsigned int regno, machine_mode mode)
 	}
     }
 
-  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.  */
-  if (MXU2_REG_P (regno) && MXU2_SUPPORTED_MODE_P (mode))
-    return true;
+  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.
+     When MXU2 is enabled, COP2 regs can ONLY hold vector modes —
+     prevent scalar SImode to avoid mtc2/mfc2 which the assembler
+     doesn't accept with $vr register names.  */
+  if (MXU2_REG_P (regno))
+    return ISA_HAS_MXU2 && MXU2_SUPPORTED_MODE_P (mode);
 
   if (ALL_COP_REG_P (regno))
     return mclass == MODE_INT && size <= UNITS_PER_WORD;
