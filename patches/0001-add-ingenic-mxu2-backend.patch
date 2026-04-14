@@ -985,7 +985,7 @@
 +#endif /* defined(__mips_mxu2) */
 +#endif /* _MXU2_H */
 --- a/gcc/config/mips/ingenic-mxu2.def	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/ingenic-mxu2.def	2026-04-13 19:01:55.742394428 -0700
++++ b/gcc/config/mips/ingenic-mxu2.def	2026-04-13 20:23:32.063791111 -0700
 @@ -0,0 +1,505 @@
 +/* Define a MXU2 MIPS_BUILTIN_DIRECT function __builtin_mxu2_<INSN>
 +   for instruction CODE_FOR_mxu2_<INSN>.  FUNCTION_TYPE is a
@@ -1004,14 +1004,14 @@
 +    FUNCTION_TYPE, mips_builtin_avail_mxu2, false }
 +
 +/* For ingenic MXU2 instructions.  */
-+#define CODE_FOR_mxu2_add_b CODE_FOR_addv16qi3
-+#define CODE_FOR_mxu2_add_h CODE_FOR_addv8hi3
-+#define CODE_FOR_mxu2_add_w CODE_FOR_addv4si3
-+#define CODE_FOR_mxu2_add_d CODE_FOR_addv2di3
-+#define CODE_FOR_mxu2_sub_b CODE_FOR_subv16qi3
-+#define CODE_FOR_mxu2_sub_h CODE_FOR_subv8hi3
-+#define CODE_FOR_mxu2_sub_w CODE_FOR_subv4si3
-+#define CODE_FOR_mxu2_sub_d CODE_FOR_subv2di3
++#define CODE_FOR_mxu2_add_b CODE_FOR_mxu2_addv16qi3
++#define CODE_FOR_mxu2_add_h CODE_FOR_mxu2_addv8hi3
++#define CODE_FOR_mxu2_add_w CODE_FOR_mxu2_addv4si3
++#define CODE_FOR_mxu2_add_d CODE_FOR_mxu2_addv2di3
++#define CODE_FOR_mxu2_sub_b CODE_FOR_mxu2_subv16qi3
++#define CODE_FOR_mxu2_sub_h CODE_FOR_mxu2_subv8hi3
++#define CODE_FOR_mxu2_sub_w CODE_FOR_mxu2_subv4si3
++#define CODE_FOR_mxu2_sub_d CODE_FOR_mxu2_subv2di3
 +/* #define CODE_FOR_mxu2_mtfpu_w CODE_FOR_mxu2_mtfpu_w_f
 +/* #define CODE_FOR_mxu2_mtfpu_d CODE_FOR_mxu2_mtfpu_d_f
 +/* #define CODE_FOR_mxu2_insffpu_w CODE_FOR_mxu2_insffpu_w_f
@@ -1019,57 +1019,57 @@
 +/* #define CODE_FOR_mxu2_mffpu_w CODE_FOR_mxu2_mffpu_w_f
 +/* #define CODE_FOR_mxu2_mffpu_d CODE_FOR_mxu2_mffpu_d_f
 +*/
-+#define CODE_FOR_mxu2_sll_b CODE_FOR_vashlv16qi3
-+#define CODE_FOR_mxu2_sll_h CODE_FOR_vashlv8hi3
-+#define CODE_FOR_mxu2_sll_w CODE_FOR_vashlv4si3
-+#define CODE_FOR_mxu2_sll_d CODE_FOR_vashlv2di3
-+#define CODE_FOR_mxu2_sra_b CODE_FOR_vashrv16qi3
-+#define CODE_FOR_mxu2_sra_h CODE_FOR_vashrv8hi3
-+#define CODE_FOR_mxu2_sra_w CODE_FOR_vashrv4si3
-+#define CODE_FOR_mxu2_sra_d CODE_FOR_vashrv2di3
-+#define CODE_FOR_mxu2_srl_b CODE_FOR_vlshrv16qi3
-+#define CODE_FOR_mxu2_srl_h CODE_FOR_vlshrv8hi3
-+#define CODE_FOR_mxu2_srl_w CODE_FOR_vlshrv4si3
-+#define CODE_FOR_mxu2_srl_d CODE_FOR_vlshrv2di3
-+#define CODE_FOR_mxu2_divs_b CODE_FOR_divv16qi3
-+#define CODE_FOR_mxu2_divs_h CODE_FOR_divv8hi3
-+#define CODE_FOR_mxu2_divs_w CODE_FOR_divv4si3
-+#define CODE_FOR_mxu2_divs_d CODE_FOR_divv2di3
-+#define CODE_FOR_mxu2_divu_b CODE_FOR_udivv16qi3
-+#define CODE_FOR_mxu2_divu_h CODE_FOR_udivv8hi3
-+#define CODE_FOR_mxu2_divu_w CODE_FOR_udivv4si3
-+#define CODE_FOR_mxu2_divu_d CODE_FOR_udivv2di3
-+#define CODE_FOR_mxu2_mods_b CODE_FOR_modv16qi3
-+#define CODE_FOR_mxu2_mods_h CODE_FOR_modv8hi3
-+#define CODE_FOR_mxu2_mods_w CODE_FOR_modv4si3
-+#define CODE_FOR_mxu2_mods_d CODE_FOR_modv2di3
-+#define CODE_FOR_mxu2_modu_b CODE_FOR_umodv16qi3
-+#define CODE_FOR_mxu2_modu_h CODE_FOR_umodv8hi3
-+#define CODE_FOR_mxu2_modu_w CODE_FOR_umodv4si3
-+#define CODE_FOR_mxu2_modu_d CODE_FOR_umodv2di3
-+#define CODE_FOR_mxu2_mul_b CODE_FOR_mulv16qi3
-+#define CODE_FOR_mxu2_mul_h CODE_FOR_mulv8hi3
-+#define CODE_FOR_mxu2_mul_w CODE_FOR_mulv4si3
-+#define CODE_FOR_mxu2_mul_d CODE_FOR_mulv2di3
++#define CODE_FOR_mxu2_sll_b CODE_FOR_mxu2_vashlv16qi3
++#define CODE_FOR_mxu2_sll_h CODE_FOR_mxu2_vashlv8hi3
++#define CODE_FOR_mxu2_sll_w CODE_FOR_mxu2_vashlv4si3
++#define CODE_FOR_mxu2_sll_d CODE_FOR_mxu2_vashlv2di3
++#define CODE_FOR_mxu2_sra_b CODE_FOR_mxu2_vashrv16qi3
++#define CODE_FOR_mxu2_sra_h CODE_FOR_mxu2_vashrv8hi3
++#define CODE_FOR_mxu2_sra_w CODE_FOR_mxu2_vashrv4si3
++#define CODE_FOR_mxu2_sra_d CODE_FOR_mxu2_vashrv2di3
++#define CODE_FOR_mxu2_srl_b CODE_FOR_mxu2_vlshrv16qi3
++#define CODE_FOR_mxu2_srl_h CODE_FOR_mxu2_vlshrv8hi3
++#define CODE_FOR_mxu2_srl_w CODE_FOR_mxu2_vlshrv4si3
++#define CODE_FOR_mxu2_srl_d CODE_FOR_mxu2_vlshrv2di3
++#define CODE_FOR_mxu2_divs_b CODE_FOR_mxu2_divv16qi3
++#define CODE_FOR_mxu2_divs_h CODE_FOR_mxu2_divv8hi3
++#define CODE_FOR_mxu2_divs_w CODE_FOR_mxu2_divv4si3
++#define CODE_FOR_mxu2_divs_d CODE_FOR_mxu2_divv2di3
++#define CODE_FOR_mxu2_divu_b CODE_FOR_mxu2_udivv16qi3
++#define CODE_FOR_mxu2_divu_h CODE_FOR_mxu2_udivv8hi3
++#define CODE_FOR_mxu2_divu_w CODE_FOR_mxu2_udivv4si3
++#define CODE_FOR_mxu2_divu_d CODE_FOR_mxu2_udivv2di3
++#define CODE_FOR_mxu2_mods_b CODE_FOR_mxu2_modv16qi3
++#define CODE_FOR_mxu2_mods_h CODE_FOR_mxu2_modv8hi3
++#define CODE_FOR_mxu2_mods_w CODE_FOR_mxu2_modv4si3
++#define CODE_FOR_mxu2_mods_d CODE_FOR_mxu2_modv2di3
++#define CODE_FOR_mxu2_modu_b CODE_FOR_mxu2_umodv16qi3
++#define CODE_FOR_mxu2_modu_h CODE_FOR_mxu2_umodv8hi3
++#define CODE_FOR_mxu2_modu_w CODE_FOR_mxu2_umodv4si3
++#define CODE_FOR_mxu2_modu_d CODE_FOR_mxu2_umodv2di3
++#define CODE_FOR_mxu2_mul_b CODE_FOR_mxu2_mulv16qi3
++#define CODE_FOR_mxu2_mul_h CODE_FOR_mxu2_mulv8hi3
++#define CODE_FOR_mxu2_mul_w CODE_FOR_mxu2_mulv4si3
++#define CODE_FOR_mxu2_mul_d CODE_FOR_mxu2_mulv2di3
 +#define CODE_FOR_mxu2_li_b CODE_FOR_mxu2_liv16qi
 +#define CODE_FOR_mxu2_li_h CODE_FOR_mxu2_liv8hi
 +#define CODE_FOR_mxu2_li_w CODE_FOR_mxu2_liv4si
 +#define CODE_FOR_mxu2_li_d CODE_FOR_mxu2_liv2di
-+#define CODE_FOR_mxu2_andv CODE_FOR_andv16qi3
-+#define CODE_FOR_mxu2_orv CODE_FOR_iorv16qi3
-+#define CODE_FOR_mxu2_xorv CODE_FOR_xorv16qi3
++#define CODE_FOR_mxu2_andv CODE_FOR_mxu2_andv16qi3
++#define CODE_FOR_mxu2_orv CODE_FOR_mxu2_iorv16qi3
++#define CODE_FOR_mxu2_xorv CODE_FOR_mxu2_xorv16qi3
 +#define CODE_FOR_mxu2_norv CODE_FOR_mxu2_norv_b
 +#define CODE_FOR_mxu2_bselv CODE_FOR_mxu2_bselv_b
-+#define CODE_FOR_mxu2_fadd_w CODE_FOR_addv4sf3
-+#define CODE_FOR_mxu2_fadd_d CODE_FOR_addv2df3
-+#define CODE_FOR_mxu2_fsub_w CODE_FOR_subv4sf3
-+#define CODE_FOR_mxu2_fsub_d CODE_FOR_subv2df3
-+#define CODE_FOR_mxu2_fmul_w CODE_FOR_mulv4sf3
-+#define CODE_FOR_mxu2_fmul_d CODE_FOR_mulv2df3
-+#define CODE_FOR_mxu2_fdiv_w CODE_FOR_divv4sf3
-+#define CODE_FOR_mxu2_fdiv_d CODE_FOR_divv2df3
-+#define CODE_FOR_mxu2_fsqrt_w CODE_FOR_sqrtv4sf2
-+#define CODE_FOR_mxu2_fsqrt_d CODE_FOR_sqrtv2df2
++#define CODE_FOR_mxu2_fadd_w CODE_FOR_mxu2_addv4sf3
++#define CODE_FOR_mxu2_fadd_d CODE_FOR_mxu2_addv2df3
++#define CODE_FOR_mxu2_fsub_w CODE_FOR_mxu2_subv4sf3
++#define CODE_FOR_mxu2_fsub_d CODE_FOR_mxu2_subv2df3
++#define CODE_FOR_mxu2_fmul_w CODE_FOR_mxu2_mulv4sf3
++#define CODE_FOR_mxu2_fmul_d CODE_FOR_mxu2_mulv2df3
++#define CODE_FOR_mxu2_fdiv_w CODE_FOR_mxu2_divv4sf3
++#define CODE_FOR_mxu2_fdiv_d CODE_FOR_mxu2_divv2df3
++#define CODE_FOR_mxu2_fsqrt_w CODE_FOR_mxu2_sqrtv4sf2
++#define CODE_FOR_mxu2_fsqrt_d CODE_FOR_mxu2_sqrtv2df2
 +#define CODE_FOR_mxu2_bnez1q CODE_FOR_mxu2_bnez1q_b
 +#define CODE_FOR_mxu2_beqz1q CODE_FOR_mxu2_beqz1q_b
 +#define CODE_FOR_mxu2_lu1qx CODE_FOR_mxu2_lu1qx_b
@@ -1082,23 +1082,23 @@
 +#define CODE_FOR_mxu2_sa1q CODE_FOR_mxu2_sa1q_b
 +#define CODE_FOR_mxu2_shufv CODE_FOR_mxu2_shufv_b
 +
-+#define CODE_FOR_mxu2_fmax_w CODE_FOR_smaxv4sf3
-+#define CODE_FOR_mxu2_fmax_d CODE_FOR_smaxv2df3
-+#define CODE_FOR_mxu2_fmin_w CODE_FOR_sminv4sf3
-+#define CODE_FOR_mxu2_fmin_d CODE_FOR_sminv2df3
++#define CODE_FOR_mxu2_fmax_w CODE_FOR_mxu2_smaxv4sf3
++#define CODE_FOR_mxu2_fmax_d CODE_FOR_mxu2_smaxv2df3
++#define CODE_FOR_mxu2_fmin_w CODE_FOR_mxu2_sminv4sf3
++#define CODE_FOR_mxu2_fmin_d CODE_FOR_mxu2_sminv2df3
 +
-+#define CODE_FOR_mxu2_slli_b CODE_FOR_vashlv16qi3
-+#define CODE_FOR_mxu2_slli_h CODE_FOR_vashlv8hi3
-+#define CODE_FOR_mxu2_slli_w CODE_FOR_vashlv4si3
-+#define CODE_FOR_mxu2_slli_d CODE_FOR_vashlv2di3
-+#define CODE_FOR_mxu2_srai_b CODE_FOR_vashrv16qi3
-+#define CODE_FOR_mxu2_srai_h CODE_FOR_vashrv8hi3
-+#define CODE_FOR_mxu2_srai_w CODE_FOR_vashrv4si3
-+#define CODE_FOR_mxu2_srai_d CODE_FOR_vashrv2di3
-+#define CODE_FOR_mxu2_srli_b CODE_FOR_vlshrv16qi3
-+#define CODE_FOR_mxu2_srli_h CODE_FOR_vlshrv8hi3
-+#define CODE_FOR_mxu2_srli_w CODE_FOR_vlshrv4si3
-+#define CODE_FOR_mxu2_srli_d CODE_FOR_vlshrv2di3
++#define CODE_FOR_mxu2_slli_b CODE_FOR_mxu2_vashlv16qi3
++#define CODE_FOR_mxu2_slli_h CODE_FOR_mxu2_vashlv8hi3
++#define CODE_FOR_mxu2_slli_w CODE_FOR_mxu2_vashlv4si3
++#define CODE_FOR_mxu2_slli_d CODE_FOR_mxu2_vashlv2di3
++#define CODE_FOR_mxu2_srai_b CODE_FOR_mxu2_vashrv16qi3
++#define CODE_FOR_mxu2_srai_h CODE_FOR_mxu2_vashrv8hi3
++#define CODE_FOR_mxu2_srai_w CODE_FOR_mxu2_vashrv4si3
++#define CODE_FOR_mxu2_srai_d CODE_FOR_mxu2_vashrv2di3
++#define CODE_FOR_mxu2_srli_b CODE_FOR_mxu2_vlshrv16qi3
++#define CODE_FOR_mxu2_srli_h CODE_FOR_mxu2_vlshrv8hi3
++#define CODE_FOR_mxu2_srli_w CODE_FOR_mxu2_vlshrv4si3
++#define CODE_FOR_mxu2_srli_d CODE_FOR_mxu2_vlshrv2di3
 +
 +/* Built-in functions for Ingenic MXU2.	 */
 +/* branch */
@@ -1493,7 +1493,7 @@
 +MXU2_BUILTIN (li_w, MIPS_V4SI_FTYPE_HI),
 +MXU2_BUILTIN (li_d, MIPS_V2DI_FTYPE_HI),
 --- a/gcc/config/mips/mips-mxu2.md	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 20:17:43.675766390 -0700
++++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 20:23:32.036144485 -0700
 @@ -0,0 +1,1852 @@
 +;; Machine Description for MIPS INGENIC MXU2
 +;; Based on the Ingenic MXU2 XBurst@Instruction Set Arch Release Date: Nov. 18,2014
@@ -1696,7 +1696,7 @@
 +;; These enable C vector operations (a+b, a-b, etc.) and builtins
 +;; that map through CODE_FOR_addv4si3, etc.
 +
-+(define_insn "add<mode>3"
++(define_insn "mxu2_add<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1704,7 +1704,7 @@
 +  "add<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "sub<mode>3"
++(define_insn "mxu2_sub<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(minus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1712,7 +1712,7 @@
 +  "sub<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mul<mode>3"
++(define_insn "mxu2_mul<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(mult:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1720,7 +1720,7 @@
 +  "mul<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "div<mode>3"
++(define_insn "mxu2_div<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(div:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1728,7 +1728,7 @@
 +  "divs<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "udiv<mode>3"
++(define_insn "mxu2_udiv<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(udiv:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1736,7 +1736,7 @@
 +  "divu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mod<mode>3"
++(define_insn "mxu2_mod<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(mod:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1744,7 +1744,7 @@
 +  "mods<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "umod<mode>3"
++(define_insn "mxu2_umod<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(umod:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1752,7 +1752,7 @@
 +  "modu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "and<mode>3"
++(define_insn "mxu2_and<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(and:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1760,7 +1760,7 @@
 +  "andv\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "ior<mode>3"
++(define_insn "mxu2_ior<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ior:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1768,7 +1768,7 @@
 +  "orv\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "xor<mode>3"
++(define_insn "mxu2_xor<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(xor:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1776,21 +1776,21 @@
 +  "xorv\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "one_cmpl<mode>2"
++(define_insn "mxu2_one_cmpl<mode>2"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(not:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")))]
 +  "ISA_HAS_MXU2"
 +  "norv\t%w0,%w1,%w1"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "neg<mode>2"
++(define_insn "mxu2_neg<mode>2"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(neg:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")))]
 +  "ISA_HAS_MXU2"
 +  "sub<mxu2fmt>\t%w0,%w0,%w1"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "vashl<mode>3"
++(define_insn "mxu2_vashl<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ashift:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		      (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1798,7 +1798,7 @@
 +  "sll<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "vashr<mode>3"
++(define_insn "mxu2_vashr<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ashiftrt:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +			(match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1806,7 +1806,7 @@
 +  "sra<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "vlshr<mode>3"
++(define_insn "mxu2_vlshr<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(lshiftrt:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +			(match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1814,7 +1814,7 @@
 +  "srl<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "smax<mode>3"
++(define_insn "mxu2_smax<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(smax:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1822,7 +1822,7 @@
 +  "maxs<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "smin<mode>3"
++(define_insn "mxu2_smin<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(smin:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1830,7 +1830,7 @@
 +  "mins<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "umax<mode>3"
++(define_insn "mxu2_umax<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(umax:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1838,7 +1838,7 @@
 +  "maxu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "umin<mode>3"
++(define_insn "mxu2_umin<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(umin:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1846,7 +1846,7 @@
 +  "minu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "ssadd<mode>3"
++(define_insn "mxu2_ssadd<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ss_plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		       (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1854,7 +1854,7 @@
 +  "addss<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "usadd<mode>3"
++(define_insn "mxu2_usadd<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(us_plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		       (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1863,7 +1863,7 @@
 +  [(set_attr "mode" "TI")])
 +
 +;; Float operations
-+(define_insn "add<mode>3"
++(define_insn "mxu2_add<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(plus:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1871,7 +1871,7 @@
 +  "fadd<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "sub<mode>3"
++(define_insn "mxu2_sub<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(minus:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		     (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1879,7 +1879,7 @@
 +  "fsub<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mul<mode>3"
++(define_insn "mxu2_mul<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(mult:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1887,7 +1887,7 @@
 +  "fmul<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "div<mode>3"
++(define_insn "mxu2_div<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(div:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		   (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1895,14 +1895,14 @@
 +  "fdiv<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "sqrt<mode>2"
++(define_insn "mxu2_sqrt<mode>2"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(sqrt:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")))]
 +  "ISA_HAS_MXU2"
 +  "fsqrt<mxu2fmt>\t%w0,%w1"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "smax<mode>3"
++(define_insn "mxu2_smax<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(smax:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1910,7 +1910,7 @@
 +  "fmax<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "smin<mode>3"
++(define_insn "mxu2_smin<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(smin:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
