@@ -1,22 +1,19 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Ingenic Semiconductor <support@ingenic.com>
-Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
----
 --- a/gcc/config/mips/mips.opt	2025-08-07 23:51:40.584349973 -0700
-+++ b/gcc/config/mips/mips.opt	2026-04-13 18:50:22.044366934 -0700
-@@ -328,6 +328,9 @@
++++ b/gcc/config/mips/mips.opt	2026-04-13 19:01:55.732778944 -0700
+@@ -328,6 +328,10 @@
  Target Mask(MSA)
  Use MIPS MSA Extension instructions.
  
 +mmxu2
 +Target Var(TARGET_MXU2)
 +Use Ingenic MXU2 128-bit SIMD instructions.
++
  mmt
  Target Var(TARGET_MT)
  Allow the use of MT instructions.
 --- a/gcc/config/mips/constraints.md	2025-08-07 23:51:40.578854684 -0700
-+++ b/gcc/config/mips/constraints.md	2026-04-13 18:50:22.098485751 -0700
-@@ -26,12 +26,17 @@
++++ b/gcc/config/mips/constraints.md	2026-04-13 19:01:55.732212930 -0700
+@@ -26,12 +26,15 @@
  (define_register_constraint "t" "T_REG"
    "@internal")
  
@@ -30,12 +27,10 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +(define_register_constraint "q" "COP2_REGS"
 +  "A COP2 register, used by MXU2 128-bit SIMD.")
 +
-+  "Formerly the @code{hi} register.  This constraint is no longer supported.")
-+
  (define_register_constraint "l" "TARGET_BIG_ENDIAN ? MD1_REG : MD0_REG"
    "The @code{lo} register.  Use this register to store values that are
     no bigger than a word.")
-@@ -423,3 +428,8 @@
+@@ -423,3 +426,8 @@
    (and (match_code "mem")
         (match_operand 0 "lbu16_operand")))
  
@@ -45,7 +40,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +  (and (match_code "const_vector")
 +       (match_test "mips_const_vector_same_int_p (op, mode, -16384, 16383)")))
 --- a/gcc/config/mips/predicates.md	2025-08-07 23:51:40.585349991 -0700
-+++ b/gcc/config/mips/predicates.md	2026-04-13 18:50:22.124494730 -0700
++++ b/gcc/config/mips/predicates.md	2026-04-13 19:01:55.733043701 -0700
 @@ -73,6 +73,20 @@
    (ior (match_operand 0 "const_imm10_operand")
         (match_operand 0 "register_operand")))
@@ -68,7 +63,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
    (and (match_code "const_int")
         (match_test "mips_signed_immediate_p (INTVAL (op), 10, 0)")))
 --- a/gcc/config/mips/mips.md	2025-08-07 23:51:40.584349973 -0700
-+++ b/gcc/config/mips/mips.md	2026-04-13 18:50:22.153793910 -0700
++++ b/gcc/config/mips/mips.md	2026-04-13 19:01:55.734139342 -0700
 @@ -8104,6 +8104,8 @@
  ; The MIPS MSA Instructions.
  (include "mips-msa.md")
@@ -79,7 +74,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
    UNSPEC_ADDRESS_FIRST
  ])
 --- a/gcc/config/mips/mips.h	2025-08-07 23:51:40.583349957 -0700
-+++ b/gcc/config/mips/mips.h	2026-04-13 18:49:54.276234417 -0700
++++ b/gcc/config/mips/mips.h	2026-04-13 19:01:55.736539953 -0700
 @@ -519,6 +519,12 @@
  	  builtin_define ("__mips_msa_width=128");			\
  	}								\
@@ -168,10 +163,10 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
     && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT		\
         || GET_MODE_CLASS (MODE) == MODE_VECTOR_FLOAT))
  
-+#define MXU2_SUPPORTED_MODE_P(MODE)\
-+  (ISA_HAS_MXU2\
-+   && GET_MODE_SIZE (MODE) == UNITS_PER_MXU2_REG\
-+   && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT\
++#define MXU2_SUPPORTED_MODE_P(MODE)			\
++  (ISA_HAS_MXU2					\
++   && GET_MODE_SIZE (MODE) == UNITS_PER_MXU2_REG	\
++   && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT		\
 +       || GET_MODE_CLASS (MODE) == MODE_VECTOR_FLOAT))
 +
  /* Temporary register that is used when restoring $gp after a call.  $4 and $5
@@ -193,168 +188,34 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
    "$c3r8", "$c3r9", "$c3r10","$c3r11","$c3r12","$c3r13","$c3r14","$c3r15", \
    "$c3r16","$c3r17","$c3r18","$c3r19","$c3r20","$c3r21","$c3r22","$c3r23", \
 --- a/gcc/config/mips/mips-protos.h	2025-08-07 23:51:40.580349907 -0700
-+++ b/gcc/config/mips/mips-protos.h	2026-04-13 18:52:12.271351310 -0700
++++ b/gcc/config/mips/mips-protos.h	2026-04-13 19:01:55.736870288 -0700
 @@ -353,6 +353,10 @@
  extern void mips_expand_vec_unpack (rtx op[2], bool, bool);
  extern void mips_expand_vec_reduc (rtx, rtx, rtx (*)(rtx, rtx, rtx));
  extern void mips_expand_msa_reduc (rtx (*)(rtx, rtx, rtx), rtx, rtx);
-+extern void mips_split_mxu2_insert_d (rtx, rtx, rtx, rtx);
-+extern void mips_split_mxu2_mfcpu_d (rtx, rtx);
-+extern void mips_split_mxu2_mtcpu_d (rtx, rtx, rtx, rtx (*)(rtx, rtx, rtx));
-+extern void mips_expand_mxu2_branch (rtx *, rtx (*)(rtx, rtx, rtx));
++extern void mips_split_mxu2_insert_d(rtx,rtx,rtx,rtx);
++extern void mips_split_mxu2_mfcpu_d(rtx,rtx);
++extern void mips_split_mxu2_mtcpu_d(rtx,rtx,rtx,rtx(*)(rtx,rtx,rtx));
++extern void mips_expand_mxu2_branch(rtx*,rtx(*)(rtx,rtx,rtx));
  extern void mips_expand_vec_minmax (rtx, rtx, rtx,
  				    rtx (*) (rtx, rtx, rtx), bool);
  
 --- a/gcc/config/mips/mips.cc	2025-08-07 23:51:40.583349957 -0700
-+++ b/gcc/config/mips/mips.cc	2026-04-13 18:51:01.371999918 -0700
-@@ -2531,7 +2531,7 @@
- {
-   /* MSA LD.* and ST.* cannot support loading symbols via an immediate
-      operand.  */
--  if (mode != MAX_MACHINE_MODE && MSA_SUPPORTED_MODE_P (mode))
-+  if (mode != MAX_MACHINE_MODE && MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-     return 0;
- 
-   return mips_symbol_insns_1 (type, mode) * (TARGET_MIPS16 ? 2 : 1);
-@@ -2690,7 +2690,7 @@
-     return false;
- 
-   /* MSA LD.* and ST.* cannot support loading symbols via %lo($base).  */
--  if (MSA_SUPPORTED_MODE_P (mode))
-+  if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-     return false;
- 
-   return true;
-@@ -2823,7 +2823,7 @@
-     return true;
-   if (ISA_HAS_LDX && mode == DImode)
-     return true;
--  if (MSA_SUPPORTED_MODE_P (mode))
-+  if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-     return true;
-   return false;
- }
-@@ -2863,7 +2863,7 @@
- {
-   struct mips_address_info addr;
-   int factor;
--  bool msa_p = (!might_split_p && MSA_SUPPORTED_MODE_P (mode));
-+  bool msa_p = (!might_split_p && MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode));
- 
-   /* BLKmode is used for single unaligned loads and stores and should
-      not count as a multiword mode.  (GET_MODE_SIZE (BLKmode) is pretty
-@@ -3160,7 +3160,7 @@
-   count = 1;
-   if (TARGET_CHECK_ZERO_DIV)
-     {
--      if (GENERATE_DIVIDE_TRAPS && !MSA_SUPPORTED_MODE_P (mode))
-+      if (GENERATE_DIVIDE_TRAPS && !MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-         count++;
-       else
-         count += 2;
-@@ -3899,7 +3899,7 @@
-   if (!register_operand (dest, mode)
-       && !register_operand (src, mode)
-       && (TARGET_MIPS16 || !const_0_operand (src, mode)
--	  || MSA_SUPPORTED_MODE_P (mode)))
-+	  || MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode)))
-     {
-       mips_emit_move (dest, force_reg (mode, src));
-       return true;
-@@ -5002,7 +5002,7 @@
-     }
- 
-   /* Check if MSA moves need splitting.  */
--  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest)))
-+  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest)) || MXU2_SUPPORTED_MODE_P (GET_MODE (dest)))
-     return mips_split_128bit_move_p (dest, src);
- 
-   /* Otherwise split all multiword moves.  */
-@@ -5019,7 +5019,7 @@
-   rtx low_dest;
- 
-   gcc_checking_assert (mips_split_move_p (dest, src, split_type));
--  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest)))
-+  if (MSA_SUPPORTED_MODE_P (GET_MODE (dest)) || MXU2_SUPPORTED_MODE_P (GET_MODE (dest)))
-     mips_split_128bit_move (dest, src);
-   else if (FP_REG_RTX_P (dest) || FP_REG_RTX_P (src))
-     {
-@@ -5313,6 +5313,74 @@
++++ b/gcc/config/mips/mips.cc	2026-04-13 19:01:55.740914289 -0700
+@@ -5313,6 +5313,12 @@
    emit_insn (gen_msa_insert_w (new_dest, high, new_dest, GEN_INT (1 << 3)));
  }
  
 +
-+/* Split MXU2 insfcpu.d.  */
-+void
-+mips_split_mxu2_insert_d (rtx dest, rtx src1, rtx index, rtx src2)
-+{
-+  rtx low, high, new_dest, new_src1;
-+  gcc_assert (GET_MODE (dest) == GET_MODE (src1));
-+  gcc_assert ((GET_MODE (dest) == V2DImode
-+	       && (GET_MODE (src2) == DImode || src2 == const0_rtx)));
-+  low = mips_subword (src2, false);
-+  high = mips_subword (src2, true);
-+  new_dest = simplify_gen_subreg (V4SImode, dest, GET_MODE (dest), 0);
-+  new_src1 = simplify_gen_subreg (V4SImode, src1, GET_MODE (src1), 0);
-+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_src1,
-+				  GEN_INT (INTVAL (index) * 2), low));
-+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest,
-+				  GEN_INT (INTVAL (index) * 2 + 1), high));
-+}
-+
-+/* Split MXU2 mfcpu.d.  */
-+void
-+mips_split_mxu2_mfcpu_d (rtx dest, rtx src)
-+{
-+  rtx low, high, new_dest;
-+  gcc_assert ((GET_MODE (dest) == V2DImode
-+	       && (GET_MODE (src) == DImode || src == const0_rtx)));
-+  if (src == const0_rtx) { low = src; high = src; }
-+  else { low = mips_subword (src, false); high = mips_subword (src, true); }
-+  new_dest = simplify_gen_subreg (V4SImode, dest, GET_MODE (dest), 0);
-+  emit_insn (gen_mxu2_mfcpu_w (new_dest, low));
-+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest, const1_rtx, high));
-+  emit_insn (gen_mxu2_insfcpu_w (new_dest, new_dest, GEN_INT (3), high));
-+}
-+
-+/* Split MXU2 mtcpu.d.  */
-+void
-+mips_split_mxu2_mtcpu_d (rtx dest, rtx src, rtx index,
-+			  rtx (*gen_fn)(rtx, rtx, rtx))
-+{
-+  rtx low, high, new_src;
-+  gcc_assert ((GET_MODE (src) == V2DImode && GET_MODE (dest) == DImode));
-+  low = mips_subword (dest, false);
-+  high = mips_subword (dest, true);
-+  new_src = simplify_gen_subreg (V4SImode, src, GET_MODE (src), 0);
-+  emit_insn (gen_fn (low, new_src, GEN_INT (INTVAL (index) * 2)));
-+  emit_insn (gen_fn (high, new_src, GEN_INT (INTVAL (index) * 2 + 1)));
-+}
-+
-+/* Expand MXU2 branch.  */
-+void
-+mips_expand_mxu2_branch (rtx *operands, rtx (*gen_fn)(rtx, rtx, rtx))
-+{
-+  rtx labelT = gen_label_rtx ();
-+  rtx labelE = gen_label_rtx ();
-+  rtx tmp = gen_fn (labelT, operands[1], const0_rtx);
-+  tmp = emit_jump_insn (tmp);
-+  JUMP_LABEL (tmp) = labelT;
-+  emit_move_insn (operands[0], const0_rtx);
-+  tmp = emit_jump_insn (gen_jump (labelE));
-+  emit_barrier ();
-+  JUMP_LABEL (tmp) = labelE;
-+  emit_label (labelT);
-+  LABEL_NUSES (labelT) = 1;
-+  emit_move_insn (operands[0], const1_rtx);
-+  emit_label (labelE);
-+  LABEL_NUSES (labelE) = 1;
-+}
++void mips_split_mxu2_insert_d(rtx d,rtx s1,rtx idx,rtx s2){rtx l,h,nd,ns;l=mips_subword(s2,false);h=mips_subword(s2,true);nd=simplify_gen_subreg(V4SImode,d,GET_MODE(d),0);ns=simplify_gen_subreg(V4SImode,s1,GET_MODE(s1),0);emit_insn(gen_mxu2_insfcpu_w(nd,ns,GEN_INT(INTVAL(idx)*2),l));emit_insn(gen_mxu2_insfcpu_w(nd,nd,GEN_INT(INTVAL(idx)*2+1),h));}
++void mips_split_mxu2_mfcpu_d(rtx d,rtx s){rtx l,h,nd;if(s==const0_rtx){l=s;h=s;}else{l=mips_subword(s,false);h=mips_subword(s,true);}nd=simplify_gen_subreg(V4SImode,d,GET_MODE(d),0);emit_insn(gen_mxu2_mfcpu_w(nd,l));emit_insn(gen_mxu2_insfcpu_w(nd,nd,const1_rtx,h));emit_insn(gen_mxu2_insfcpu_w(nd,nd,GEN_INT(3),h));}
++void mips_split_mxu2_mtcpu_d(rtx d,rtx s,rtx idx,rtx(*gf)(rtx,rtx,rtx)){rtx l,h,ns;l=mips_subword(d,false);h=mips_subword(d,true);ns=simplify_gen_subreg(V4SImode,s,GET_MODE(s),0);emit_insn(gf(l,ns,GEN_INT(INTVAL(idx)*2)));emit_insn(gf(h,ns,GEN_INT(INTVAL(idx)*2+1)));}
++void mips_expand_mxu2_branch(rtx*op,rtx(*gf)(rtx,rtx,rtx)){rtx lT=gen_label_rtx(),lE=gen_label_rtx(),t=gf(lT,op[1],const0_rtx);t=emit_jump_insn(t);JUMP_LABEL(t)=lT;emit_move_insn(op[0],const0_rtx);t=emit_jump_insn(gen_jump(lE));emit_barrier();JUMP_LABEL(t)=lE;emit_label(lT);LABEL_NUSES(lT)=1;emit_move_insn(op[0],const1_rtx);emit_label(lE);LABEL_NUSES(lE)=1;}
 +
  /* Return true if a move from SRC to DEST in INSN should be split.  */
  
  bool
-@@ -9609,6 +9677,8 @@
+@@ -9609,6 +9615,8 @@
      case 'w':
        if (code == REG && MSA_REG_P (REGNO (op)))
  	fprintf (file, "$w%s", &reg_names[REGNO (op)][2]);
@@ -363,39 +224,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
        else
  	output_operand_lossage ("invalid use of '%%%c'", letter);
        break;
-@@ -13278,11 +13348,11 @@
-   size = GET_MODE_SIZE (mode);
-   mclass = GET_MODE_CLASS (mode);
- 
--  if (GP_REG_P (regno) && mode != CCFmode && !MSA_SUPPORTED_MODE_P (mode))
-+  if (GP_REG_P (regno) && mode != CCFmode && !MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-     return ((regno - GP_REG_FIRST) & 1) == 0 || size <= UNITS_PER_WORD;
- 
-   /* For MSA, allow TImode and 128-bit vector modes in all FPR.  */
--  if (FP_REG_P (regno) && MSA_SUPPORTED_MODE_P (mode))
-+  if (FP_REG_P (regno) && MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-     return true;
- 
-   if (FP_REG_P (regno)
-@@ -13431,7 +13501,7 @@
- 
-   if (FP_REG_P (regno))
-     {
--      if (MSA_SUPPORTED_MODE_P (mode))
-+      if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
- 	return 1;
- 
-       return (GET_MODE_SIZE (mode) + UNITS_PER_FPREG - 1) / UNITS_PER_FPREG;
-@@ -13463,7 +13533,7 @@
-     {
-       if (mips_hard_regno_mode_ok (FP_REG_FIRST, mode))
- 	{
--	  if (MSA_SUPPORTED_MODE_P (mode))
-+	  if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
- 	    size = MIN (size, UNITS_PER_MSA_REG);
- 	  else
- 	    size = MIN (size, UNITS_PER_FPREG);
-@@ -13546,7 +13616,7 @@
+@@ -13546,7 +13554,7 @@
        return TARGET_HARD_FLOAT && TARGET_PAIRED_SINGLE_FLOAT;
  
      default:
@@ -404,16 +233,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
      }
  }
  
-@@ -13804,7 +13874,7 @@
- 	   pairs of lwc1s and swc1s if ldc1 and sdc1 are not supported.  */
- 	return NO_REGS;
- 
--      if (MEM_P (x) && MSA_SUPPORTED_MODE_P (mode))
-+      if (MEM_P (x) && MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
- 	/* In this case we can use MSA LD.* and ST.*.  */
- 	return NO_REGS;
- 
-@@ -13877,7 +13947,7 @@
+@@ -13877,7 +13885,7 @@
        return TARGET_LOONGSON_MMI;
  
      default:
@@ -422,7 +242,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
      }
  }
  
-@@ -15775,6 +15845,7 @@
+@@ -15775,6 +15783,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
  AVAIL_NON_MIPS16 (msa, TARGET_MSA)
@@ -430,7 +250,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
  AVAIL_NON_MIPS16 (r6, mips_isa_rev >= 6)
  
  /* Construct a mips_builtin_description from the given arguments.
-@@ -17015,6 +17086,8 @@
+@@ -17015,6 +17024,8 @@
    MSA_BUILTIN_PURE (cfcmsa, MIPS_SI_FTYPE_UQI),
    MSA_BUILTIN_PURE (move_v, MIPS_V16QI_FTYPE_V16QI),
  
@@ -439,7 +259,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -20232,6 +20305,9 @@
+@@ -20232,6 +20243,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -449,7 +269,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21190,16 @@
+@@ -21114,6 +21128,13 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
@@ -457,26 +277,14 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +    {
 +      unsigned int regno;
 +      for (regno = COP2_REG_FIRST; regno < COP2_REG_LAST; regno++)
-+	{
-+	  fixed_regs[regno] = 0;
-+	  call_used_regs[regno] = 1;
-+	}
++	{ fixed_regs[regno] = 0; call_used_regs[regno] = 1; }
 +      fixed_regs[COP2_REG_LAST] = 1;
 +    }
  }
  
  /* Implement EH_USES.  */
-@@ -22310,7 +22396,7 @@
- mips_sched_reassociation_width (unsigned int opc ATTRIBUTE_UNUSED,
- 				machine_mode mode)
- {
--  if (MSA_SUPPORTED_MODE_P (mode))
-+  if (MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode))
-     return 2;
-   return 1;
- }
 --- a/gcc/config/mips/mips-msa.md	2025-08-07 23:51:40.580349907 -0700
-+++ b/gcc/config/mips/mips-msa.md	2026-04-13 18:52:12.464142480 -0700
++++ b/gcc/config/mips/mips-msa.md	2026-04-13 19:01:55.766967399 -0700
 @@ -238,7 +238,7 @@
  (define_expand "vec_init<mode><unitmode>"
    [(match_operand:MSA 0 "register_operand")
@@ -639,7 +447,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
  {
    mips_expand_vec_cmp_expr (operands);
    DONE;
-@@ -481,7 +481,7 @@
+@@ -481,15 +481,15 @@
  	    (match_operand:<UNITMODE> 1 "reg_or_0_operand" "dJ,f"))
  	  (match_operand:MSA 2 "register_operand" "0,0")
  	  (match_operand 3 "const_<bitmask>_operand" "")))]
@@ -647,8 +455,9 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +  "ISA_HAS_MSA || ISA_HAS_MXU2"
  {
    if (which_alternative == 1)
-     return "insve.<msafmt>\t%w0[%y3],%w1[0]";
-@@ -489,7 +489,7 @@
+-    return "insve.<msafmt>\t%w0[%y3],%w1[0]";
++    return ISA_HAS_MXU2 ? "insve<msafmt>\t%w0[%y3],%w1[0]" : "insve.<msafmt>\t%w0[%y3],%w1[0]";
+ 
    if (!TARGET_64BIT && (<MODE>mode == V2DImode || <MODE>mode == V2DFmode))
      return "#";
    else
@@ -980,7 +789,8 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +  "ISA_HAS_MSA || ISA_HAS_MXU2"
  {
    if (which_alternative == 0)
-     return "srl.<msafmt>\t%w0,%w1,%w2";
+-    return "srl.<msafmt>\t%w0,%w1,%w2";
++    return ISA_HAS_MXU2 ? "srl<msafmt>\t%w0,%w1,%w2" : "srl.<msafmt>\t%w0,%w1,%w2";
  
 -  return mips_msa_output_shift_immediate("srli.<msafmt>\t%w0,%w1,%E2", operands);
 +  return mips_msa_output_shift_immediate(ISA_HAS_MXU2 ? "srli<msafmt>\t%w0,%w1,%E2" : "srli.<msafmt>\t%w0,%w1,%E2", operands);
@@ -995,7 +805,8 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +  "ISA_HAS_MSA || ISA_HAS_MXU2"
  {
    if (which_alternative == 0)
-     return "sra.<msafmt>\t%w0,%w1,%w2";
+-    return "sra.<msafmt>\t%w0,%w1,%w2";
++    return ISA_HAS_MXU2 ? "sra<msafmt>\t%w0,%w1,%w2" : "sra.<msafmt>\t%w0,%w1,%w2";
  
 -  return mips_msa_output_shift_immediate("srai.<msafmt>\t%w0,%w1,%E2", operands);
 +  return mips_msa_output_shift_immediate(ISA_HAS_MXU2 ? "srai<msafmt>\t%w0,%w1,%E2" : "srai.<msafmt>\t%w0,%w1,%E2", operands);
@@ -1010,7 +821,8 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +  "ISA_HAS_MSA || ISA_HAS_MXU2"
  {
    if (which_alternative == 0)
-     return "sll.<msafmt>\t%w0,%w1,%w2";
+-    return "sll.<msafmt>\t%w0,%w1,%w2";
++    return ISA_HAS_MXU2 ? "sll<msafmt>\t%w0,%w1,%w2" : "sll.<msafmt>\t%w0,%w1,%w2";
  
 -  return mips_msa_output_shift_immediate("slli.<msafmt>\t%w0,%w1,%E2", operands);
 +  return mips_msa_output_shift_immediate(ISA_HAS_MXU2 ? "slli<msafmt>\t%w0,%w1,%E2" : "slli.<msafmt>\t%w0,%w1,%E2", operands);
@@ -1532,7 +1344,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
    [(set_attr "type" "simd_fcvt")
     (set_attr "cnv_mode" "<FINTCNV>")
     (set_attr "mode" "<MODE>")])
-@@ -1705,7 +1705,7 @@
+@@ -1705,15 +1705,15 @@
    [(set (match_operand:MSA 0 "register_operand" "=f,f")
  	(vec_duplicate:MSA
  	  (match_operand:<UNITMODE> 1 "reg_or_0_operand" "d,J")))]
@@ -1540,8 +1352,9 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +  "ISA_HAS_MSA || ISA_HAS_MXU2"
  {
    if (which_alternative == 1)
-     return "ldi.<msafmt>\t%w0,0";
-@@ -1713,7 +1713,7 @@
+-    return "ldi.<msafmt>\t%w0,0";
++    return ISA_HAS_MXU2 ? "ldi<msafmt>\t%w0,0" : "ldi.<msafmt>\t%w0,0";
+ 
    if (!TARGET_64BIT && (<MODE>mode == V2DImode || <MODE>mode == V2DFmode))
      return "#";
    else
@@ -2513,7 +2326,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
    rtx tmp = gen_reg_rtx (<MODE>mode);
    mips_expand_msa_reduc (gen_<optab><mode>3, tmp, operands[1]);
 --- a/gcc/config/mips/mxu2.h	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/mxu2.h	2026-04-13 18:52:12.309531959 -0700
++++ b/gcc/config/mips/mxu2.h	2026-04-13 19:01:55.741593735 -0700
 @@ -0,0 +1,432 @@
 +/* MIPS MXU2 intrinsics include file.
 +
@@ -2948,7 +2761,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +#endif /* defined(__mips_mxu2) */
 +#endif /* _MXU2_H */
 --- a/gcc/config/mips/ingenic-mxu2.def	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/ingenic-mxu2.def	2026-04-13 18:52:12.366321934 -0700
++++ b/gcc/config/mips/ingenic-mxu2.def	2026-04-13 19:01:55.742394428 -0700
 @@ -0,0 +1,505 @@
 +/* Define a MXU2 MIPS_BUILTIN_DIRECT function __builtin_mxu2_<INSN>
 +   for instruction CODE_FOR_mxu2_<INSN>.  FUNCTION_TYPE is a
@@ -3456,7 +3269,7 @@ Subject: [PATCH] mips: add Ingenic MXU2 128-bit SIMD compiler backend
 +MXU2_BUILTIN (li_w, MIPS_V4SI_FTYPE_HI),
 +MXU2_BUILTIN (li_d, MIPS_V2DI_FTYPE_HI),
 --- a/gcc/config/mips/mips-mxu2.md	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 18:52:12.340604023 -0700
++++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 19:01:55.742052961 -0700
 @@ -0,0 +1,1605 @@
 +;; Machine Description for MIPS INGENIC MXU2
 +;; Based on the Ingenic MXU2 XBurst@Instruction Set Arch Release Date: Nov. 18,2014
