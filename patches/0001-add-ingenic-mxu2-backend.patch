@@ -351,6 +351,15 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (FP_REG_P (regno))
      return reg_class_subset_p (rclass, GR_REGS) ? NO_REGS : GR_REGS;
  
+@@ -13877,7 +14007,7 @@
+       return TARGET_LOONGSON_MMI;
+ 
+     default:
+-      return MSA_SUPPORTED_MODE_P (mode);
++      return MSA_SUPPORTED_MODE_P (mode) || MXU2_SUPPORTED_MODE_P (mode);
+     }
+ }
+ 
 @@ -15775,6 +15905,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
