@@ -1418,7 +1418,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +
 +(define_mode_attr mxu2fmt
 +  [(V2DF "d")
-+   (V4SF "s")
++   (V4SF "w")
 +   (V2DI "d")
 +   (V4SI "w")
 +   (V8HI "h")
