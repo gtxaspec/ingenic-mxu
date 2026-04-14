@@ -104,7 +104,19 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  	return 1;
        /* Fall through.  */
      case CONST_DOUBLE:
-@@ -3899,7 +3904,7 @@
+@@ -3134,7 +3139,10 @@
+   bool might_split_p;
+   rtx set;
+ 
+-  gcc_assert (MEM_P (mem));
++  /* MXU2 load/store builtins may pass non-MEM operands through
++     cost calculation paths.  Return a default cost.  */
++  if (!MEM_P (mem))
++    return 1;
+   mode = GET_MODE (mem);
+ 
+   /* Try to prove that INSN does not need to be split.  */
+@@ -3899,7 +3907,7 @@
    if (!register_operand (dest, mode)
        && !register_operand (src, mode)
        && (TARGET_MIPS16 || !const_0_operand (src, mode)
@@ -113,7 +125,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      {
        mips_emit_move (dest, force_reg (mode, src));
        return true;
-@@ -5002,7 +5007,8 @@
+@@ -5002,7 +5010,8 @@
      }
  
    /* Check if MSA moves need splitting.  */
@@ -123,7 +135,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      return mips_split_128bit_move_p (dest, src);
  
    /* Otherwise split all multiword moves.  */
-@@ -5019,7 +5025,8 @@
+@@ -5019,7 +5028,8 @@
    rtx low_dest;
  
    gcc_checking_assert (mips_split_move_p (dest, src, split_type));
@@ -133,7 +145,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      mips_split_128bit_move (dest, src);
    else if (FP_REG_RTX_P (dest) || FP_REG_RTX_P (src))
      {
-@@ -5145,6 +5152,25 @@
+@@ -5145,6 +5155,25 @@
    if (FP_REG_RTX_P (dest) && src == CONST0_RTX (GET_MODE (src)))
      return false;
  
@@ -159,7 +171,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    return true;
  }
  
-@@ -5210,6 +5236,41 @@
+@@ -5210,6 +5239,41 @@
  	    emit_insn (gen_msa_copy_s_d (d, new_src, GEN_INT (index)));
  	}
      }
@@ -201,7 +213,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    else
      {
        low_dest = mips_subword_at_byte (dest, 0);
-@@ -5313,6 +5374,76 @@
+@@ -5313,6 +5377,76 @@
    emit_insn (gen_msa_insert_w (new_dest, high, new_dest, GEN_INT (1 << 3)));
  }
  
@@ -278,7 +290,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  /* Return true if a move from SRC to DEST in INSN should be split.  */
  
  bool
-@@ -5341,6 +5472,7 @@
+@@ -5341,6 +5475,7 @@
    machine_mode mode = GET_MODE (dest);
    bool dbl_p = (GET_MODE_SIZE (mode) == 8);
    bool msa_p = MSA_SUPPORTED_MODE_P (mode);
@@ -286,7 +298,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    enum mips_symbol_type symbol_type;
  
    if (mips_split_move_p (dest, src, SPLIT_IF_NECESSARY))
-@@ -5354,6 +5486,14 @@
+@@ -5354,6 +5489,14 @@
        gcc_assert (mips_const_vector_same_int_p (src, mode, -512, 511));
        return "ldi.%v0\t%w0,%E1";
      }
@@ -301,7 +313,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  
    if ((src_code == REG && GP_REG_P (REGNO (src)))
        || (!TARGET_MIPS16 && src == CONST0_RTX (mode)))
-@@ -5395,6 +5535,18 @@
+@@ -5395,6 +5538,18 @@
  	      return dbl_p ? "dmtc1\t%z1,%0" : "mtc1\t%z1,%0";
  	    }
  
@@ -320,7 +332,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  	  if (ALL_COP_REG_P (REGNO (dest)))
  	    {
  	      static char retval[] = "dmtc_\t%z1,%0";
-@@ -5444,6 +5596,17 @@
+@@ -5444,6 +5599,17 @@
  	      return dbl_p ? "dmfc1\t%0,%1" : "mfc1\t%0,%1";
  	    }
  
@@ -338,7 +350,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  	  if (ALL_COP_REG_P (REGNO (src)))
  	    {
  	      static char retval[] = "dmfc_\t%0,%1";
-@@ -5506,6 +5669,13 @@
+@@ -5506,6 +5672,13 @@
  	  return dbl_p ? "dla\t%0,%1" : "la\t%0,%1";
  	}
      }
@@ -352,7 +364,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (src_code == REG && FP_REG_P (REGNO (src)))
      {
        if (dest_code == REG && FP_REG_P (REGNO (dest)))
-@@ -5526,6 +5696,11 @@
+@@ -5526,6 +5699,11 @@
  	  return dbl_p ? "sdc1\t%1,%0" : "swc1\t%1,%0";
  	}
      }
@@ -364,7 +376,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (dest_code == REG && FP_REG_P (REGNO (dest)))
      {
        if (src_code == MEM)
-@@ -5536,6 +5711,27 @@
+@@ -5536,6 +5714,27 @@
  	  return dbl_p ? "ldc1\t%0,%1" : "lwc1\t%0,%1";
  	}
      }
@@ -375,7 +387,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +      static char buf[80];
 +      int elem = (REGNO (dest) - COP2_REG_FIRST) & 3;
 +      int base = REGNO (dest) - elem;
-+      sprintf (buf, "lw\t$1,%%1\n\tinsfcpuw\t$vr%d[%d],$1", base - COP2_REG_FIRST, elem);
++      sprintf (buf, ".set\tnoat\n\tlw\t$1,%%1\n\tinsfcpuw\t$vr%d[%d],$1\n\t.set\tat", base - COP2_REG_FIRST, elem);
 +      return buf;
 +    }
 +  /* MXU2: COP2->MEM scalar: mtcpusw to $at, then sw.  */
@@ -385,14 +397,14 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +      static char buf[80];
 +      int elem = (REGNO (src) - COP2_REG_FIRST) & 3;
 +      int base = REGNO (src) - elem;
-+      sprintf (buf, "mtcpusw\t$1,$vr%d[%d]\n\tsw\t$1,%%0", base - COP2_REG_FIRST, elem);
++      sprintf (buf, ".set\tnoat\n\tmtcpusw\t$1,$vr%d[%d]\n\tsw\t$1,%%0\n\t.set\tat", base - COP2_REG_FIRST, elem);
 +      return buf;
 +    }
 +
    if (dest_code == REG && ALL_COP_REG_P (REGNO (dest)) && src_code == MEM)
      {
        static char retval[] = "l_c_\t%0,%1";
-@@ -9609,6 +9805,8 @@
+@@ -9609,6 +9808,8 @@
      case 'w':
        if (code == REG && MSA_REG_P (REGNO (op)))
  	fprintf (file, "$w%s", &reg_names[REGNO (op)][2]);
@@ -401,7 +413,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
        else
  	output_operand_lossage ("invalid use of '%%%c'", letter);
        break;
-@@ -13278,7 +13476,8 @@
+@@ -13278,7 +13479,8 @@
    size = GET_MODE_SIZE (mode);
    mclass = GET_MODE_CLASS (mode);
  
@@ -411,7 +423,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      return ((regno - GP_REG_FIRST) & 1) == 0 || size <= UNITS_PER_WORD;
  
    /* For MSA, allow TImode and 128-bit vector modes in all FPR.  */
-@@ -13354,6 +13553,19 @@
+@@ -13354,6 +13556,19 @@
  	}
      }
  
@@ -431,7 +443,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (ALL_COP_REG_P (regno))
      return mclass == MODE_INT && size <= UNITS_PER_WORD;
  
-@@ -13429,6 +13641,12 @@
+@@ -13429,6 +13644,12 @@
         CCmode values, and CCmode is always considered to be 4 bytes wide.  */
      return (GET_MODE_SIZE (mode) + 3) / 4;
  
@@ -444,7 +456,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (FP_REG_P (regno))
      {
        if (MSA_SUPPORTED_MODE_P (mode))
-@@ -13459,6 +13677,15 @@
+@@ -13459,6 +13680,15 @@
  
        left &= ~reg_class_contents[ST_REGS];
      }
@@ -460,7 +472,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (hard_reg_set_intersect_p (left, reg_class_contents[(int) FP_REGS]))
      {
        if (mips_hard_regno_mode_ok (FP_REG_FIRST, mode))
-@@ -13492,6 +13719,10 @@
+@@ -13492,6 +13722,10 @@
    if (MSA_SUPPORTED_MODE_P (from) && MSA_SUPPORTED_MODE_P (to))
      return true;
  
@@ -471,7 +483,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    /* Otherwise, there are several problems with changing the modes of
       values in floating-point registers:
  
-@@ -13515,7 +13746,17 @@
+@@ -13515,7 +13749,17 @@
  
       We therefore disallow all mode changes involving FPRs.  */
  
@@ -490,7 +502,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  }
  
  /* Implement target hook small_register_classes_for_mode_p.  */
-@@ -13546,7 +13787,7 @@
+@@ -13546,7 +13790,7 @@
        return TARGET_HARD_FLOAT && TARGET_PAIRED_SINGLE_FLOAT;
  
      default:
@@ -499,7 +511,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      }
  }
  
-@@ -13825,6 +14066,14 @@
+@@ -13825,6 +14069,14 @@
        /* Otherwise, we need to reload through an integer register.  */
        return GR_REGS;
      }
@@ -514,7 +526,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    if (FP_REG_P (regno))
      return reg_class_subset_p (rclass, GR_REGS) ? NO_REGS : GR_REGS;
  
-@@ -13877,7 +14126,7 @@
+@@ -13877,7 +14129,7 @@
        return TARGET_LOONGSON_MMI;
  
      default:
@@ -523,7 +535,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      }
  }
  
-@@ -15775,6 +16024,7 @@
+@@ -15775,6 +16027,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
  AVAIL_NON_MIPS16 (msa, TARGET_MSA)
@@ -531,7 +543,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  AVAIL_NON_MIPS16 (r6, mips_isa_rev >= 6)
  
  /* Construct a mips_builtin_description from the given arguments.
-@@ -17015,6 +17265,8 @@
+@@ -17015,6 +17268,8 @@
    MSA_BUILTIN_PURE (cfcmsa, MIPS_SI_FTYPE_UQI),
    MSA_BUILTIN_PURE (move_v, MIPS_V16QI_FTYPE_V16QI),
  
@@ -540,7 +552,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -17465,6 +17717,68 @@
+@@ -17465,6 +17720,68 @@
  	}
        break;
  
@@ -609,7 +621,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
      case CODE_FOR_msa_insert_b:
      case CODE_FOR_msa_insert_h:
      case CODE_FOR_msa_insert_w:
-@@ -20232,6 +20546,9 @@
+@@ -20232,6 +20549,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -619,7 +631,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21431,16 @@
+@@ -21114,6 +21434,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
