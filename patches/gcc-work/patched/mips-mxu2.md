@@ -164,7 +164,7 @@
 
 (define_mode_attr mxu2fmt
   [(V2DF "d")
-   (V4SF "s")
+   (V4SF "w")
    (V2DI "d")
    (V4SI "w")
    (V8HI "h")
