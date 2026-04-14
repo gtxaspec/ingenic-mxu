@@ -5584,9 +5584,10 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmfc1\t%0,%1" : "mfc1\t%0,%1";
 	    }
 
-	  /* MXU2: COP2->GP needs split through memory; emit split marker.  */
+	  /* MXU2: COP2->GP via stack: su1q to stack, then lw.
+	     Use $sp-16 as temp (below current frame).  */
 	  if (MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
-	    return "#";
+	    return "su1q\t%w1,-16($sp)\n\tlw\t%0,-16($sp)";
 
 	  if (ALL_COP_REG_P (REGNO (src)))
 	    {
@@ -5692,13 +5693,14 @@ mips_output_move (rtx dest, rtx src)
 	  return dbl_p ? "ldc1\t%0,%1" : "lwc1\t%0,%1";
 	}
     }
-  /* MXU2: COP2<->MEM scalar moves need split through stack.  */
+  /* MXU2: MEM->COP2 scalar: lw to $1(at), then mfcpuw.  */
   if (dest_code == REG && MXU2_REG_P (REGNO (dest))
       && ISA_HAS_MXU2 && src_code == MEM)
-    return "#";
+    return "lw\t$1,%1\n\tmfcpuw\t%w0,$1";
+  /* MXU2: COP2->MEM scalar: su1q to stack temp, lw, then sw.  */
   if (dest_code == MEM && src_code == REG
       && MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
-    return "#";
+    return "su1q\t%w1,-16($sp)\n\tlw\t$1,-16($sp)\n\tsw\t$1,%0";
 
   if (dest_code == REG && ALL_COP_REG_P (REGNO (dest)) && src_code == MEM)
     {
