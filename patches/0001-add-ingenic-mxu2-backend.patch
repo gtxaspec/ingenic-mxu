@@ -3336,7 +3336,7 @@
 +MXU2_BUILTIN (li_w, MIPS_V4SI_FTYPE_HI),
 +MXU2_BUILTIN (li_d, MIPS_V2DI_FTYPE_HI),
 --- a/gcc/config/mips/mips-mxu2.md	2026-03-26 22:10:46.825006565 -0700
-+++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 19:01:55.742052961 -0700
++++ b/gcc/config/mips/mips-mxu2.md	2026-04-13 19:46:27.237681403 -0700
 @@ -0,0 +1,1605 @@
 +;; Machine Description for MIPS INGENIC MXU2
 +;; Based on the Ingenic MXU2 XBurst@Instruction Set Arch Release Date: Nov. 18,2014
