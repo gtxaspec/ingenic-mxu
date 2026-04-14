@@ -333,7 +333,7 @@
  
  /* Implement EH_USES.  */
 --- a/gcc/config/mips/mips-msa.md	2025-08-07 23:51:40.580349907 -0700
-+++ b/gcc/config/mips/mips-msa.md	2026-04-13 19:01:55.766967399 -0700
++++ b/gcc/config/mips/mips-msa.md	2026-04-13 19:27:19.825752422 -0700
 @@ -238,7 +238,7 @@
  (define_expand "vec_init<mode><unitmode>"
    [(match_operand:MSA 0 "register_operand")
@@ -646,15 +646,6 @@
  {
    if (mips_legitimize_move (<MODE>mode, operands[0], operands[1]))
      DONE;
-@@ -679,7 +679,7 @@
- (define_insn "mov<mode>_msa"
-   [(set (match_operand:MSA 0 "nonimmediate_operand" "=f,f,R,*d,*f")
- 	(match_operand:MSA 1 "move_operand" "fYGYI,R,f,*f,*d"))]
--  "ISA_HAS_MSA"
-+  "ISA_HAS_MSA || ISA_HAS_MXU2"
-   { return mips_output_move (operands[0], operands[1]); }
-   [(set_attr "type" "simd_move,simd_load,simd_store,simd_copy,simd_insert")
-    (set_attr "mode" "<MODE>")])
 @@ -700,7 +700,7 @@
    [(match_operand:MSA 0 "register_operand")
     (match_operand 1 "pmode_register_operand")
