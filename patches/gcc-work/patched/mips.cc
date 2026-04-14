@@ -5531,11 +5531,10 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmtc1\t%z1,%0" : "mtc1\t%z1,%0";
 	    }
 
-	  /* MXU2: GP->COP2 scalar: store GP to stack temp, lu1q.
-	     Note: mfcpuw broadcasts to ALL elements which clobbers
-	     the register.  Use stack-based transfer instead.  */
+	  /* MXU2: GP->COP2 scalar: use insfcpuw to insert into element 0.
+	     XBurst has no mtc2 — COP2 is fully repurposed for MXU2.  */
 	  if (MXU2_REG_P (REGNO (dest)) && ISA_HAS_MXU2)
-	    return "sw\t%z1,-16($sp)\n\tlu1q\t%w0,-16($sp)";
+	    return "insfcpuw\t%w0[0],%z1";
 
 	  if (ALL_COP_REG_P (REGNO (dest)))
 	    {
@@ -5586,10 +5585,10 @@ mips_output_move (rtx dest, rtx src)
 	      return dbl_p ? "dmfc1\t%0,%1" : "mfc1\t%0,%1";
 	    }
 
-	  /* MXU2: COP2->GP via stack: su1q to stack, then lw.
-	     Use $sp-16 as temp (below current frame).  */
+	  /* MXU2: COP2->GP scalar: use mtcpusw to extract element 0.
+	     XBurst has no mfc2 — COP2 is fully repurposed for MXU2.  */
 	  if (MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
-	    return "su1q\t%w1,-16($sp)\n\tlw\t%0,-16($sp)";
+	    return "mtcpusw\t%0,%w1[0]";
 
 	  if (ALL_COP_REG_P (REGNO (src)))
 	    {
@@ -5695,14 +5694,14 @@ mips_output_move (rtx dest, rtx src)
 	  return dbl_p ? "ldc1\t%0,%1" : "lwc1\t%0,%1";
 	}
     }
-  /* MXU2: MEM->COP2 scalar: lw to $1(at), then mfcpuw.  */
+  /* MXU2: MEM->COP2 scalar: lw to $at, then insfcpuw.  */
   if (dest_code == REG && MXU2_REG_P (REGNO (dest))
       && ISA_HAS_MXU2 && src_code == MEM)
-    return "lw\t$1,%1\n\tmfcpuw\t%w0,$1";
-  /* MXU2: COP2->MEM scalar: su1q to stack temp, lw, then sw.  */
+    return "lw\t$1,%1\n\tinsfcpuw\t%w0[0],$1";
+  /* MXU2: COP2->MEM scalar: mtcpusw to $at, then sw.  */
   if (dest_code == MEM && src_code == REG
       && MXU2_REG_P (REGNO (src)) && ISA_HAS_MXU2)
-    return "su1q\t%w1,-16($sp)\n\tlw\t$1,-16($sp)\n\tsw\t$1,%0";
+    return "mtcpusw\t$1,%w1[0]\n\tsw\t$1,%0";
 
   if (dest_code == REG && ALL_COP_REG_P (REGNO (dest)) && src_code == MEM)
     {
