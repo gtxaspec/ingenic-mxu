@@ -13455,6 +13455,10 @@ mips_hard_regno_mode_ok_uncached (unsigned int regno, machine_mode mode)
 	}
     }
 
+  /* For MXU2, allow TImode and 128-bit vector modes in COP2 regs.  */
+  if (MXU2_REG_P (regno) && MXU2_SUPPORTED_MODE_P (mode))
+    return true;
+
   if (ALL_COP_REG_P (regno))
     return mclass == MODE_INT && size <= UNITS_PER_WORD;
 
