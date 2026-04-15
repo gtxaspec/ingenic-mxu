@@ -8,8 +8,8 @@ MXU3 is Ingenic's 512-bit SIMD extension for XBurst2 cores (T40, T41). It replac
 
 | Device | SoC | MXU3 Status |
 |--------|-----|-------------|
-| T41 (192.0.2.57) | XBurst2 V0.0 | **WORKING** on both CPUs |
-| T40 (192.0.2.58) | XBurst2 V0.0 | **WORKING on CPU0 only** — kernel bug on CPU1 |
+| T41 | XBurst2 V0.0 | **WORKING** on both CPUs |
+| T40 | XBurst2 V0.0 | **WORKING on CPU0 only** — kernel bug on CPU1 |
 
 ### T40 Kernel Bug
 

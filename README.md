@@ -223,8 +223,8 @@ MXU2/MXU3 use COP2 -- the kernel must handle COP2 Unusable exceptions by setting
 | `test_dsp.c` | DSP kernel tests |
 | `mxu_probe.c` | Hardware capability probe |
 | `t40-mxu3-fix.patch` | T40 kernel patch (MXU3 on CPU1) |
-| `FINDINGS.md` | MXU2 reverse-engineering notes |
-| `MXU3_FINDINGS.md` | MXU3 encoding reference |
+| `docs/mxu2-findings.md` | MXU2 reverse-engineering notes |
+| `docs/mxu3-findings.md` | MXU3 encoding reference |
 | `patches/` | GCC and binutils toolchain patches |
 
 ## Documentation
@@ -235,6 +235,8 @@ MXU2/MXU3 use COP2 -- the kernel must handle COP2 Unusable exceptions by setting
 | [Builtin Reference](docs/builtin-reference.md) | Complete `__builtin_mxu2_*` API with types, signatures, and examples |
 | [Architecture Reference](docs/mxu2-architecture.md) | Register file, instruction encoding, COP2 differences, instruction categories |
 | [Toolchain Patches](docs/toolchain-patches.md) | How to apply patches, two-stage build, patch internals |
+| [MXU2 Findings](docs/mxu2-findings.md) | MXU2 reverse-engineering notes and encoding details |
+| [MXU3 Findings](docs/mxu3-findings.md) | MXU3 encoding reference and hardware notes |
 
 ## License
 
