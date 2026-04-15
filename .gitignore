@@ -1,14 +1,31 @@
-# Binaries
+# Build artifacts
+*.o
+*.s
+*.dis
+*.rej
+
+# Compiled binaries (MIPS ELF)
 mxu_probe
 msa_probe
 read_cp0
 test_shim
-*.o
-*.dis
-all_intrinsics_v2.c
-all_intrinsics_test.c
-test_all_mxu2
 test_dsp
-test_shufv
-test_detect
+test_full
+test_new
+test_all_mxu2
+test_mxu3
+test_msa
+xb2_probe
 xb3_*
+mxu_probe_xb2
+test_all_mxu2_xb2
+
+# Old exploration files
+all_intrinsics_test.c
+all_intrinsics_v2.c
+
+# Patch working directories (full vendor source copies)
+patches/gcc-work/
+patches/binutils-work/
+patches/binutils-split/stages/
+patches/gcc-split/*.body
