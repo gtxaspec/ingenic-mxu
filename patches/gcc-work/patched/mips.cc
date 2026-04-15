@@ -17722,18 +17722,18 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 
     /* MXU2 immediate shifts (vashl/vashr/vlshr patterns):
        convert scalar immediate to vector constant.  */
-    case CODE_FOR_mxu2_vashlv16qi3:
-    case CODE_FOR_mxu2_vashlv8hi3:
-    case CODE_FOR_mxu2_vashlv4si3:
-    case CODE_FOR_mxu2_vashlv2di3:
-    case CODE_FOR_mxu2_vashrv16qi3:
-    case CODE_FOR_mxu2_vashrv8hi3:
-    case CODE_FOR_mxu2_vashrv4si3:
-    case CODE_FOR_mxu2_vashrv2di3:
-    case CODE_FOR_mxu2_vlshrv16qi3:
-    case CODE_FOR_mxu2_vlshrv8hi3:
-    case CODE_FOR_mxu2_vlshrv4si3:
-    case CODE_FOR_mxu2_vlshrv2di3:
+    case CODE_FOR_vashlv16qi3:
+    case CODE_FOR_vashlv8hi3:
+    case CODE_FOR_vashlv4si3:
+    case CODE_FOR_vashlv2di3:
+    case CODE_FOR_vashrv16qi3:
+    case CODE_FOR_vashrv8hi3:
+    case CODE_FOR_vashrv4si3:
+    case CODE_FOR_vashrv2di3:
+    case CODE_FOR_vlshrv16qi3:
+    case CODE_FOR_vlshrv8hi3:
+    case CODE_FOR_vlshrv4si3:
+    case CODE_FOR_vlshrv2di3:
       gcc_assert (has_target_p && nops == 3);
       if (CONST_INT_P (ops[2].value))
 	{
