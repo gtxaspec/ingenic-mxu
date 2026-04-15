@@ -95,7 +95,7 @@
  	return 1;
        /* Fall through.  */
      case CONST_DOUBLE:
-@@ -3134,7 +3139,10 @@
+@@ -3134,7 +3139,13 @@
    bool might_split_p;
    rtx set;
  
@@ -103,11 +103,14 @@
 +  /* MXU2 load/store builtins may pass non-MEM operands through
 +     cost calculation paths.  Return a default cost.  */
 +  if (!MEM_P (mem))
-+    return 1;
++    {
++      gcc_assert (ISA_HAS_MXU2);
++      return 1;
++    }
    mode = GET_MODE (mem);
  
    /* Try to prove that INSN does not need to be split.  */
-@@ -3899,7 +3907,7 @@
+@@ -3899,7 +3910,7 @@
    if (!register_operand (dest, mode)
        && !register_operand (src, mode)
        && (TARGET_MIPS16 || !const_0_operand (src, mode)
@@ -116,7 +119,7 @@
      {
        mips_emit_move (dest, force_reg (mode, src));
        return true;
-@@ -5002,7 +5010,8 @@
+@@ -5002,7 +5013,8 @@
      }
  
    /* Check if MSA moves need splitting.  */
@@ -126,7 +129,7 @@
      return mips_split_128bit_move_p (dest, src);
  
    /* Otherwise split all multiword moves.  */
-@@ -5019,7 +5028,8 @@
+@@ -5019,7 +5031,8 @@
    rtx low_dest;
  
    gcc_checking_assert (mips_split_move_p (dest, src, split_type));
@@ -136,7 +139,7 @@
      mips_split_128bit_move (dest, src);
    else if (FP_REG_RTX_P (dest) || FP_REG_RTX_P (src))
      {
-@@ -5145,6 +5155,25 @@
+@@ -5145,6 +5158,25 @@
    if (FP_REG_RTX_P (dest) && src == CONST0_RTX (GET_MODE (src)))
      return false;
  
@@ -162,7 +165,7 @@
    return true;
  }
  
-@@ -5210,6 +5239,41 @@
+@@ -5210,6 +5242,41 @@
  	    emit_insn (gen_msa_copy_s_d (d, new_src, GEN_INT (index)));
  	}
      }
@@ -204,7 +207,7 @@
    else
      {
        low_dest = mips_subword_at_byte (dest, 0);
-@@ -5313,6 +5377,76 @@
+@@ -5313,6 +5380,76 @@
    emit_insn (gen_msa_insert_w (new_dest, high, new_dest, GEN_INT (1 << 3)));
  }
  
@@ -281,7 +284,7 @@
  /* Return true if a move from SRC to DEST in INSN should be split.  */
  
  bool
-@@ -5341,6 +5475,7 @@
+@@ -5341,6 +5478,7 @@
    machine_mode mode = GET_MODE (dest);
    bool dbl_p = (GET_MODE_SIZE (mode) == 8);
    bool msa_p = MSA_SUPPORTED_MODE_P (mode);
@@ -289,7 +292,7 @@
    enum mips_symbol_type symbol_type;
  
    if (mips_split_move_p (dest, src, SPLIT_IF_NECESSARY))
-@@ -5354,6 +5489,14 @@
+@@ -5354,6 +5492,14 @@
        gcc_assert (mips_const_vector_same_int_p (src, mode, -512, 511));
        return "ldi.%v0\t%w0,%E1";
      }
@@ -304,7 +307,7 @@
  
    if ((src_code == REG && GP_REG_P (REGNO (src)))
        || (!TARGET_MIPS16 && src == CONST0_RTX (mode)))
-@@ -5395,6 +5538,18 @@
+@@ -5395,6 +5541,18 @@
  	      return dbl_p ? "dmtc1\t%z1,%0" : "mtc1\t%z1,%0";
  	    }
  
@@ -323,7 +326,7 @@
  	  if (ALL_COP_REG_P (REGNO (dest)))
  	    {
  	      static char retval[] = "dmtc_\t%z1,%0";
-@@ -5444,6 +5599,17 @@
+@@ -5444,6 +5602,17 @@
  	      return dbl_p ? "dmfc1\t%0,%1" : "mfc1\t%0,%1";
  	    }
  
@@ -341,7 +344,7 @@
  	  if (ALL_COP_REG_P (REGNO (src)))
  	    {
  	      static char retval[] = "dmfc_\t%0,%1";
-@@ -5506,6 +5672,13 @@
+@@ -5506,6 +5675,13 @@
  	  return dbl_p ? "dla\t%0,%1" : "la\t%0,%1";
  	}
      }
@@ -355,7 +358,7 @@
    if (src_code == REG && FP_REG_P (REGNO (src)))
      {
        if (dest_code == REG && FP_REG_P (REGNO (dest)))
-@@ -5526,6 +5699,11 @@
+@@ -5526,6 +5702,11 @@
  	  return dbl_p ? "sdc1\t%1,%0" : "swc1\t%1,%0";
  	}
      }
@@ -367,7 +370,7 @@
    if (dest_code == REG && FP_REG_P (REGNO (dest)))
      {
        if (src_code == MEM)
-@@ -5536,6 +5714,27 @@
+@@ -5536,6 +5717,27 @@
  	  return dbl_p ? "ldc1\t%0,%1" : "lwc1\t%0,%1";
  	}
      }
@@ -395,7 +398,7 @@
    if (dest_code == REG && ALL_COP_REG_P (REGNO (dest)) && src_code == MEM)
      {
        static char retval[] = "l_c_\t%0,%1";
-@@ -9609,6 +9808,8 @@
+@@ -9609,6 +9811,8 @@
      case 'w':
        if (code == REG && MSA_REG_P (REGNO (op)))
  	fprintf (file, "$w%s", &reg_names[REGNO (op)][2]);
@@ -404,7 +407,7 @@
        else
  	output_operand_lossage ("invalid use of '%%%c'", letter);
        break;
-@@ -13278,7 +13479,8 @@
+@@ -13278,7 +13482,8 @@
    size = GET_MODE_SIZE (mode);
    mclass = GET_MODE_CLASS (mode);
  
@@ -414,7 +417,7 @@
      return ((regno - GP_REG_FIRST) & 1) == 0 || size <= UNITS_PER_WORD;
  
    /* For MSA, allow TImode and 128-bit vector modes in all FPR.  */
-@@ -13354,6 +13556,19 @@
+@@ -13354,6 +13559,19 @@
  	}
      }
  
@@ -434,7 +437,7 @@
    if (ALL_COP_REG_P (regno))
      return mclass == MODE_INT && size <= UNITS_PER_WORD;
  
-@@ -13429,6 +13644,12 @@
+@@ -13429,6 +13647,12 @@
         CCmode values, and CCmode is always considered to be 4 bytes wide.  */
      return (GET_MODE_SIZE (mode) + 3) / 4;
  
@@ -447,7 +450,7 @@
    if (FP_REG_P (regno))
      {
        if (MSA_SUPPORTED_MODE_P (mode))
-@@ -13459,6 +13680,15 @@
+@@ -13459,6 +13683,15 @@
  
        left &= ~reg_class_contents[ST_REGS];
      }
@@ -463,7 +466,7 @@
    if (hard_reg_set_intersect_p (left, reg_class_contents[(int) FP_REGS]))
      {
        if (mips_hard_regno_mode_ok (FP_REG_FIRST, mode))
-@@ -13492,6 +13722,10 @@
+@@ -13492,6 +13725,10 @@
    if (MSA_SUPPORTED_MODE_P (from) && MSA_SUPPORTED_MODE_P (to))
      return true;
  
@@ -474,7 +477,7 @@
    /* Otherwise, there are several problems with changing the modes of
       values in floating-point registers:
  
-@@ -13515,7 +13749,17 @@
+@@ -13515,7 +13752,17 @@
  
       We therefore disallow all mode changes involving FPRs.  */
  
@@ -493,7 +496,7 @@
  }
  
  /* Implement target hook small_register_classes_for_mode_p.  */
-@@ -13546,7 +13790,7 @@
+@@ -13546,7 +13793,7 @@
        return TARGET_HARD_FLOAT && TARGET_PAIRED_SINGLE_FLOAT;
  
      default:
@@ -502,7 +505,7 @@
      }
  }
  
-@@ -13825,6 +14069,14 @@
+@@ -13825,6 +14072,14 @@
        /* Otherwise, we need to reload through an integer register.  */
        return GR_REGS;
      }
@@ -517,7 +520,7 @@
    if (FP_REG_P (regno))
      return reg_class_subset_p (rclass, GR_REGS) ? NO_REGS : GR_REGS;
  
-@@ -13877,7 +14129,7 @@
+@@ -13877,7 +14132,7 @@
        return TARGET_LOONGSON_MMI;
  
      default:
@@ -526,7 +529,7 @@
      }
  }
  
-@@ -15775,6 +16027,7 @@
+@@ -15775,6 +16030,7 @@
  AVAIL_NON_MIPS16 (loongson, TARGET_LOONGSON_MMI)
  AVAIL_MIPS16E2_OR_NON_MIPS16 (cache, TARGET_CACHE_BUILTIN)
  AVAIL_NON_MIPS16 (msa, TARGET_MSA)
@@ -534,7 +537,7 @@
  AVAIL_NON_MIPS16 (r6, mips_isa_rev >= 6)
  
  /* Construct a mips_builtin_description from the given arguments.
-@@ -17015,6 +17268,8 @@
+@@ -17015,6 +17271,8 @@
    MSA_BUILTIN_PURE (cfcmsa, MIPS_SI_FTYPE_UQI),
    MSA_BUILTIN_PURE (move_v, MIPS_V16QI_FTYPE_V16QI),
  
@@ -543,7 +546,7 @@
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -17465,6 +17720,133 @@
+@@ -17465,6 +17723,133 @@
  	}
        break;
  
@@ -677,7 +680,7 @@
      case CODE_FOR_msa_insert_b:
      case CODE_FOR_msa_insert_h:
      case CODE_FOR_msa_insert_w:
-@@ -20232,6 +20614,9 @@
+@@ -20232,6 +20617,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -687,7 +690,7 @@
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21499,16 @@
+@@ -21114,6 +21502,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }

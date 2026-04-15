@@ -3142,7 +3142,10 @@ mips_load_store_insns (rtx mem, rtx_insn *insn)
   /* MXU2 load/store builtins may pass non-MEM operands through
      cost calculation paths.  Return a default cost.  */
   if (!MEM_P (mem))
-    return 1;
+    {
+      gcc_assert (ISA_HAS_MXU2);
+      return 1;
+    }
   mode = GET_MODE (mem);
 
   /* Try to prove that INSN does not need to be split.  */
