@@ -263,8 +263,8 @@ grep -E "add[bhwd]\b|sub[bhwd]\b|mul[bhwd]\b|lu1q|su1q" output.s
 
 ### Verify on device
 ```sh
-scp prog root@10.25.1.155:/tmp/
-ssh root@10.25.1.155 /tmp/prog
+scp prog root@<device>:/tmp/
+ssh root@<device> /tmp/prog
 # SIGILL = instruction not supported on this hardware
 # Check SoC: must be T20/T21/T23/T30/T31/T32 (XBurst1)
 ```
