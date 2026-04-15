@@ -1,0 +1,106 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alfonso Gamboa <gtxent@gmail.com>
+Subject: [PATCH 4/4] mips: handle MXU2 branch instruction encoding
+
+MXU2 branch instructions (bnez/beqz variants) encode a 10-bit
+PC-relative offset at bit position 6 with a 2-bit right shift,
+unlike standard MIPS branches which use 16-bit at position 0.
+
+Changes:
+  - Set offset_reloc for '=g' operand format (BRANCH(10,6,2))
+  - Detect MXU2 branches in append_insn constant-address handler
+    by checking ASE_MXU128 flag, encode with correct bit position
+  - Detect MXU2 branches in md_apply_fix symbol-fixup handler
+    by checking opcode bits (0x1C function 0x28/0x29)
+  - Exclude MXU2 from branch relaxation (non-standard encoding)
+
+Branch range: +/-2048 bytes (10-bit signed, word-aligned).
+---
+--- a/gas/config/tc-mips.c
++++ b/gas/config/tc-mips.c
+@@ -7580,12 +7580,26 @@
+ 		      (unsigned long) address_expr->X_add_number);
+ 	    if (!mips_relax_branch)
+ 	      {
+-		if ((address_expr->X_add_number + (1 << (shift + 15)))
+-		    & ~((1 << (shift + 16)) - 1))
+-		  as_bad (_("branch address range overflow (0x%lx)"),
+-			  (unsigned long) address_expr->X_add_number);
+-		ip->insn_opcode |= ((address_expr->X_add_number >> shift)
+-				    & 0xffff);
++		/* MXU2 branch: 10-bit offset at bit position 6.  */
++		if ((ip->insn_mo->ase & ASE_MXU128)
++		    && (ip->insn_mo->pinfo & INSN_COND_BRANCH_DELAY))
++		  {
++		    if ((address_expr->X_add_number + (1 << 11))
++			& ~((1 << 12) - 1))
++		      as_bad (_("branch address range overflow (0x%lx)"),
++			      (unsigned long) address_expr->X_add_number);
++		    ip->insn_opcode |= ((address_expr->X_add_number >> 2)
++					& 0x3ff) << 6;
++		  }
++		else
++		  {
++		    if ((address_expr->X_add_number + (1 << (shift + 15)))
++			& ~((1 << (shift + 16)) - 1))
++		      as_bad (_("branch address range overflow (0x%lx)"),
++			      (unsigned long) address_expr->X_add_number);
++		    ip->insn_opcode |= ((address_expr->X_add_number >> shift)
++					& 0xffff);
++		  }
+ 	      }
+ 	  }
+ 	  break;
+@@ -7742,8 +7756,10 @@
+ 	     && !mips_opts.warn_about_macros
+ 	     && (mips_opts.at || mips_pic == NO_PIC)
+ 	     /* Don't relax BPOSGE32/64 or BC1ANY2T/F and BC1ANY4T/F
+-	        as they have no complementing branches.  */
+-	     && !(ip->insn_mo->ase & (ASE_MIPS3D | ASE_DSP64 | ASE_DSP)));
++	        as they have no complementing branches.
++	        Don't relax MXU2 branches (non-standard encoding).  */
++	     && !(ip->insn_mo->ase & (ASE_MIPS3D | ASE_DSP64 | ASE_DSP
++				      | ASE_MXU128)));
+ 
+   if (!HAVE_CODE_COMPRESSION
+       && address_expr
+@@ -8397,6 +8413,15 @@
+ 	    }
+ 	  break;
+ 
++	case '=':
++	  switch (args[1])
++	    {
++	    case 'g':
++	      *offset_reloc = BFD_RELOC_16_PCREL_S2;
++	      break;
++	    }
++	  break;
++
+ 	case 'I':
+ 	  if (!match_const_int (&arg, &imm_expr.X_add_number))
+ 	    return false;
+@@ -16169,7 +16194,22 @@
+       /* Update old instruction data.  */
+       insn = read_insn (buf);
+ 
+-      if (*valP + 0x20000 <= 0x3ffff)
++      /* MXU2 branch: 10-bit offset at bit position 6, shift 2.
++	 Detect by opcode 0x1C (bits 31:26) and func 0x28/0x29 (bits 5:0).  */
++      if (((insn >> 26) == 0x1c)
++	  && ((insn & 0x3f) == 0x28 || (insn & 0x3f) == 0x29))
++	{
++	  if (*valP + 0x800 <= 0xfff)
++	    {
++	      insn |= ((*valP >> 2) & 0x3ff) << 6;
++	      write_insn (buf, insn);
++	    }
++	  else
++	    as_bad_where (fixP->fx_file, fixP->fx_line,
++			  _("MXU2 branch address range overflow (%lx)"),
++			  (long) *valP);
++	}
++      else if (*valP + 0x20000 <= 0x3ffff)
+ 	{
+ 	  insn |= (*valP >> 2) & 0xffff;
+ 	  write_insn (buf, insn);

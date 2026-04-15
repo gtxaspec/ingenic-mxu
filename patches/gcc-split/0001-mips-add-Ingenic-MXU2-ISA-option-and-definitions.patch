@@ -1,0 +1,214 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alfonso Gamboa <gtxent@gmail.com>
+Subject: [PATCH 1/4] mips: add Ingenic MXU2 ISA option and definitions
+
+Add -mmxu2 compiler option and supporting definitions for the
+Ingenic MXU2 128-bit SIMD extension:
+
+  - mips.opt: -mmxu2 target option
+  - mips.h: ISA_HAS_MXU2, TARGET_MXU2, MXU2_REG_P, register
+    definitions (COP2_REG_FIRST/LAST, UNITS_PER_MXU2_REG),
+    MXU2_SUPPORTED_MODE_P, BIGGEST_ALIGNMENT update
+  - mips-protos.h: new function prototypes for MXU2 helpers
+  - constraints.md: "q" constraint for COP2_REGS
+  - predicates.md: MXU2-specific operand predicates
+  - config.gcc: install mxu2.h as extra header
+
+MXU2 uses COP2 registers ($vr0-$vr31) for 128-bit vector operations
+on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
+---
+--- a/gcc/config/mips/mips.opt
++++ b/gcc/config/mips/mips.opt
+@@ -328,6 +328,10 @@
+ Target Mask(MSA)
+ Use MIPS MSA Extension instructions.
+ 
++mmxu2
++Target Var(TARGET_MXU2)
++Use Ingenic MXU2 128-bit SIMD instructions.
++
+ mmt
+ Target Var(TARGET_MT)
+ Allow the use of MT instructions.
+--- a/gcc/config/mips/mips.h
++++ b/gcc/config/mips/mips.h
+@@ -519,6 +519,12 @@
+ 	  builtin_define ("__mips_msa_width=128");			\
+ 	}								\
+ 									\
++      if (TARGET_MXU2)						\
++	{							\
++	  builtin_define ("__mips_mxu2");			\
++	  builtin_define ("__mips_mxu2_width=128");		\
++	}							\
++									\
+       MIPS_CPP_SET_PROCESSOR ("_MIPS_ARCH", mips_arch_info);		\
+       MIPS_CPP_SET_PROCESSOR ("_MIPS_TUNE", mips_tune_info);		\
+ 									\
+@@ -1315,6 +1321,8 @@
+ /* The MSA ASE is available.  */
+ #define ISA_HAS_MSA		(TARGET_MSA && !TARGET_MIPS16)
+ 
++#define ISA_HAS_MXU2		(TARGET_MXU2 && !TARGET_MIPS16)
++
+ /* The MIPS16e V2 instructions are available.  */
+ #define ISA_HAS_MIPS16E2       (TARGET_MIPS16 && TARGET_MIPS16E2 \
+ 				&& !TARGET_64BIT)
+@@ -1464,6 +1472,7 @@
+ %{mcrc} %{mno-crc} \
+ %{mginv} %{mno-ginv} \
+ %{mmsa} %{mno-msa} \
++%{mmxu2} %{mno-mxu2} \
+ %{mloongson-mmi} %{mno-loongson-mmi} \
+ %{mloongson-ext} %{mno-loongson-ext} \
+ %{mloongson-ext2} %{mno-loongson-ext2} \
+@@ -1636,6 +1645,9 @@
+ /* Width of a MSA vector register in bits.  */
+ #define BITS_PER_MSA_REG (UNITS_PER_MSA_REG * BITS_PER_UNIT)
+ 
++#define UNITS_PER_MXU2_REG 16
++#define BITS_PER_MXU2_REG (UNITS_PER_MXU2_REG * BITS_PER_UNIT)
++
+ /* For MIPS, width of a floating point register.  */
+ #define UNITS_PER_FPREG (TARGET_FLOAT64 ? 8 : 4)
+ 
+@@ -1711,7 +1723,8 @@
+    MIPS_LONG_DOUBLE_TYPE_SIZE, unless under MSA the bigggest alignment is
+    BITS_PER_MSA_REG.  */
+ #define BIGGEST_ALIGNMENT \
+-  (ISA_HAS_MSA ? BITS_PER_MSA_REG : MIPS_LONG_DOUBLE_TYPE_SIZE)
++  ((ISA_HAS_MSA || ISA_HAS_MXU2) ? BITS_PER_MSA_REG \
++   : MIPS_LONG_DOUBLE_TYPE_SIZE)
+ 
+ /* All accesses must be aligned.  */
+ #define STRICT_ALIGNMENT (!ISA_HAS_UNALIGNED_ACCESS)
+@@ -1911,6 +1924,10 @@
+ #define MSA_REG_LAST  FP_REG_LAST
+ #define MSA_REG_NUM   FP_REG_NUM
+ 
++#define MXU2_REG_FIRST COP2_REG_FIRST
++#define MXU2_REG_LAST  COP2_REG_LAST
++#define MXU2_REG_NUM   COP2_REG_NUM
++
+ /* The DWARF 2 CFA column which tracks the return address from a
+    signal handler context.  This means that to maintain backwards
+    compatibility, no hard register can be assigned this column if it
+@@ -2001,9 +2018,12 @@
+   (MD_REG_P (REGNO) || DSP_ACC_REG_P (REGNO))
+ #define MSA_REG_P(REGNO) \
+   ((unsigned int) ((int) (REGNO) - MSA_REG_FIRST) < MSA_REG_NUM)
++#define MXU2_REG_P(REGNO) \
++  ((unsigned int) ((int) (REGNO) - MXU2_REG_FIRST) < MXU2_REG_NUM)
+ 
+ #define FP_REG_RTX_P(X) (REG_P (X) && FP_REG_P (REGNO (X)))
+ #define MSA_REG_RTX_P(X) (REG_P (X) && MSA_REG_P (REGNO (X)))
++#define MXU2_REG_RTX_P(X) (REG_P (X) && MXU2_REG_P (REGNO (X)))
+ 
+ /* True if X is (const (unspec [(const_int 0)] UNSPEC_GP)).  This is used
+    to initialize the mips16 gp pseudo register.  */
+@@ -2314,6 +2334,9 @@
+ #define IMM10_OPERAND(VALUE) \
+   ((unsigned HOST_WIDE_INT) (VALUE) + 0x200 < 0x400)
+ 
++#define IMM15_OPERAND(VALUE) \
++  ((unsigned HOST_WIDE_INT) (VALUE) + 0x4000 < 0x8000)
++
+ /* True if VALUE is a signed 16-bit number.  */
+ 
+ #define SMALL_OPERAND(VALUE) \
+@@ -2464,6 +2487,12 @@
+    && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT		\
+        || GET_MODE_CLASS (MODE) == MODE_VECTOR_FLOAT))
+ 
++#define MXU2_SUPPORTED_MODE_P(MODE)			\
++  (ISA_HAS_MXU2					\
++   && GET_MODE_SIZE (MODE) == UNITS_PER_MXU2_REG	\
++   && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT		\
++       || GET_MODE_CLASS (MODE) == MODE_VECTOR_FLOAT))
++
+ /* Temporary register that is used when restoring $gp after a call.  $4 and $5
+    are used for returning complex double values in soft-float code, so $6 is the
+    first suitable candidate for TARGET_MIPS16.  For !TARGET_MIPS16 we can use
+@@ -2798,10 +2827,10 @@
+   "$c0r8", "$c0r9", "$c0r10","$c0r11","$c0r12","$c0r13","$c0r14","$c0r15", \
+   "$c0r16","$c0r17","$c0r18","$c0r19","$c0r20","$c0r21","$c0r22","$c0r23", \
+   "$c0r24","$c0r25","$c0r26","$c0r27","$c0r28","$c0r29","$c0r30","$c0r31", \
+-  "$c2r0", "$c2r1", "$c2r2", "$c2r3", "$c2r4", "$c2r5", "$c2r6", "$c2r7",  \
+-  "$c2r8", "$c2r9", "$c2r10","$c2r11","$c2r12","$c2r13","$c2r14","$c2r15", \
+-  "$c2r16","$c2r17","$c2r18","$c2r19","$c2r20","$c2r21","$c2r22","$c2r23", \
+-  "$c2r24","$c2r25","$c2r26","$c2r27","$c2r28","$c2r29","$c2r30","$c2r31", \
++  "$vr0", "$vr1", "$vr2", "$vr3", "$vr4", "$vr5", "$vr6", "$vr7",  \
++  "$vr8", "$vr9", "$vr10","$vr11","$vr12","$vr13","$vr14","$vr15", \
++  "$vr16","$vr17","$vr18","$vr19","$vr20","$vr21","$vr22","$vr23", \
++  "$vr24","$vr25","$vr26","$vr27","$vr28","$vr29","$vr30","$vr31", \
+   "$c3r0", "$c3r1", "$c3r2", "$c3r3", "$c3r4", "$c3r5", "$c3r6", "$c3r7",  \
+   "$c3r8", "$c3r9", "$c3r10","$c3r11","$c3r12","$c3r13","$c3r14","$c3r15", \
+   "$c3r16","$c3r17","$c3r18","$c3r19","$c3r20","$c3r21","$c3r22","$c3r23", \
+--- a/gcc/config/mips/mips-protos.h
++++ b/gcc/config/mips/mips-protos.h
+@@ -353,6 +353,10 @@
+ extern void mips_expand_vec_unpack (rtx op[2], bool, bool);
+ extern void mips_expand_vec_reduc (rtx, rtx, rtx (*)(rtx, rtx, rtx));
+ extern void mips_expand_msa_reduc (rtx (*)(rtx, rtx, rtx), rtx, rtx);
++extern void mips_split_mxu2_insert_d(rtx,rtx,rtx,rtx);
++extern void mips_split_mxu2_mfcpu_d(rtx,rtx);
++extern void mips_split_mxu2_mtcpu_d(rtx,rtx,rtx,rtx(*)(rtx,rtx,rtx));
++extern void mips_expand_mxu2_branch(rtx*,rtx(*)(rtx,rtx,rtx));
+ extern void mips_expand_vec_minmax (rtx, rtx, rtx,
+ 				    rtx (*) (rtx, rtx, rtx), bool);
+ 
+--- a/gcc/config/mips/constraints.md
++++ b/gcc/config/mips/constraints.md
+@@ -32,6 +32,9 @@
+ (define_register_constraint "h" "NO_REGS"
+   "Formerly the @code{hi} register.  This constraint is no longer supported.")
+ 
++(define_register_constraint "q" "COP2_REGS"
++  "A COP2 register, used by MXU2 128-bit SIMD.")
++
+ (define_register_constraint "l" "TARGET_BIG_ENDIAN ? MD1_REG : MD0_REG"
+   "The @code{lo} register.  Use this register to store values that are
+    no bigger than a word.")
+@@ -423,3 +426,8 @@
+   (and (match_code "mem")
+        (match_operand 0 "lbu16_operand")))
+ 
++
++(define_constraint "YN"
++  "@internal"
++  (and (match_code "const_vector")
++       (match_test "mips_const_vector_same_int_p (op, mode, -16384, 16383)")))
+--- a/gcc/config/mips/predicates.md
++++ b/gcc/config/mips/predicates.md
+@@ -73,6 +73,20 @@
+   (ior (match_operand 0 "const_imm10_operand")
+        (match_operand 0 "register_operand")))
+ 
++(define_predicate "aq10_4_operand"
++  (and (match_code "const_int")
++       (match_test "mips_signed_immediate_p (INTVAL (op), 10, 4)")))
++
++(define_predicate "const_imm15_operand"
++  (and (match_code "const_int")
++       (match_test "IN_RANGE (INTVAL (op), -16384, 16383)")))
++
++(define_predicate "const_vector_same_simm15_operand"
++  (match_code "const_vector")
++{
++  return mips_const_vector_same_int_p (op, mode, -16384, 16383);
++})
++
+ (define_predicate "aq10b_operand"
+   (and (match_code "const_int")
+        (match_test "mips_signed_immediate_p (INTVAL (op), 10, 0)")))
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -485,7 +485,7 @@
+ mips*-*-*)
+ 	cpu_type=mips
+ 	d_target_objs="mips-d.o"
+-	extra_headers="loongson.h loongson-mmiintrin.h msa.h"
++	extra_headers="loongson.h loongson-mmiintrin.h msa.h mxu2.h"
+ 	extra_objs="frame-header-opt.o"
+ 	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
+ 	;;
