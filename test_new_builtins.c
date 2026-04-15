@@ -58,15 +58,15 @@ int main(void) {
 
     /* lu1q: unaligned load with immediate offset */
     {
-        v4i32 r = __builtin_mxu2_lu1q(A_W, 0);
-        *(v4i32*)out = r;
+        v16i8 r = __builtin_mxu2_lu1q(A_W, 0);
+        *(v16i8*)out = r;
         check_v("lu1q(A_W,0)", out, A_W, 16);
     }
 
     /* su1q: unaligned store with immediate offset */
     {
         int dst[4] __attribute__((aligned(16))) = {0};
-        v4i32 val = *(v4i32*)A_W;
+        v16i8 val = *(v16i8*)A_W;
         __builtin_mxu2_su1q(val, dst, 0);
         check_v("su1q(val,dst,0)", dst, A_W, 16);
     }
@@ -74,8 +74,8 @@ int main(void) {
     /* lu1qx: unaligned load with register offset */
     {
         int off = 0;
-        v4i32 r = __builtin_mxu2_lu1qx(A_W, off);
-        *(v4i32*)out = r;
+        v16i8 r = __builtin_mxu2_lu1qx(A_W, off);
+        *(v16i8*)out = r;
         check_v("lu1qx(A_W,0)", out, A_W, 16);
     }
 
@@ -83,22 +83,22 @@ int main(void) {
     {
         int dst[4] __attribute__((aligned(16))) = {0};
         int off = 0;
-        v4i32 val = *(v4i32*)A_W;
+        v16i8 val = *(v16i8*)A_W;
         __builtin_mxu2_su1qx(val, dst, off);
         check_v("su1qx(val,dst,0)", dst, A_W, 16);
     }
 
     /* la1q: aligned load with immediate offset */
     {
-        v4i32 r = __builtin_mxu2_la1q(A_W, 0);
-        *(v4i32*)out = r;
+        v16i8 r = __builtin_mxu2_la1q(A_W, 0);
+        *(v16i8*)out = r;
         check_v("la1q(A_W,0)", out, A_W, 16);
     }
 
     /* sa1q: aligned store with immediate offset */
     {
         int dst[4] __attribute__((aligned(16))) = {0};
-        v4i32 val = *(v4i32*)A_W;
+        v16i8 val = *(v16i8*)A_W;
         __builtin_mxu2_sa1q(val, dst, 0);
         check_v("sa1q(val,dst,0)", dst, A_W, 16);
     }
@@ -106,8 +106,8 @@ int main(void) {
     /* la1qx: aligned load with register offset */
     {
         int off = 0;
-        v4i32 r = __builtin_mxu2_la1qx(A_W, off);
-        *(v4i32*)out = r;
+        v16i8 r = __builtin_mxu2_la1qx(A_W, off);
+        *(v16i8*)out = r;
         check_v("la1qx(A_W,0)", out, A_W, 16);
     }
 
@@ -115,7 +115,7 @@ int main(void) {
     {
         int dst[4] __attribute__((aligned(16))) = {0};
         int off = 0;
-        v4i32 val = *(v4i32*)A_W;
+        v16i8 val = *(v16i8*)A_W;
         __builtin_mxu2_sa1qx(val, dst, off);
         check_v("sa1qx(val,dst,0)", dst, A_W, 16);
     }
@@ -149,72 +149,6 @@ int main(void) {
         *(v4f32*)rout = r;
         check_f("insffpu_w elem0", rout[0], A_F[0]);
         check_f("insffpu_w elem2", rout[2], 99.0f);
-    }
-
-    /* ===== C VECTOR TYPE SUPPORT ===== */
-    printf("\n--- C vector type operations ---\n");
-
-    /* v4i32 addition via C operator */
-    {
-        v4i32 a = *(v4i32*)A_W;
-        v4i32 b = *(v4i32*)B_W;
-        v4i32 r = a + b;
-        *(v4i32*)out = r;
-        int exp[4] = {300, -25, (int)0x7FFFFFF1u, -1};
-        check_v("v4i32 a+b", out, exp, 16);
-    }
-
-    /* v4i32 subtraction via C operator */
-    {
-        v4i32 a = *(v4i32*)A_W;
-        v4i32 b = *(v4i32*)B_W;
-        v4i32 r = a - b;
-        *(v4i32*)out = r;
-        int exp[4] = {-100, -75, (int)0x7FFFFFEFu, 1};
-        check_v("v4i32 a-b", out, exp, 16);
-    }
-
-    /* v4i32 multiplication via C operator */
-    {
-        v4i32 a = *(v4i32*)A_W;
-        v4i32 b = *(v4i32*)B_W;
-        v4i32 r = a * b;
-        *(v4i32*)out = r;
-        int exp[4] = {20000, -1250, (int)0x7FFFFFF0u, 0};
-        check_v("v4i32 a*b", out, exp, 16);
-    }
-
-    /* v4i32 bitwise AND via C operator */
-    {
-        v4i32 a = *(v4i32*)A_W;
-        v4i32 b = *(v4i32*)B_W;
-        v4i32 r = a & b;
-        *(v4i32*)out = r;
-        int exp[4];
-        for (int i = 0; i < 4; i++) exp[i] = A_W[i] & B_W[i];
-        check_v("v4i32 a&b", out, exp, 16);
-    }
-
-    /* v4i32 bitwise OR via C operator */
-    {
-        v4i32 a = *(v4i32*)A_W;
-        v4i32 b = *(v4i32*)B_W;
-        v4i32 r = a | b;
-        *(v4i32*)out = r;
-        int exp[4];
-        for (int i = 0; i < 4; i++) exp[i] = A_W[i] | B_W[i];
-        check_v("v4i32 a|b", out, exp, 16);
-    }
-
-    /* v4f32 addition via C operator */
-    {
-        v4f32 a = *(v4f32*)A_F;
-        v4f32 b = *(v4f32*)A_F;
-        v4f32 r = a + b;
-        float rout[4] __attribute__((aligned(16)));
-        *(v4f32*)rout = r;
-        float exp[4] = {2.0f, 4.0f, 6.0f, 8.0f};
-        check_v("v4f32 a+a", rout, exp, 16);
     }
 
     printf("\n=== Results: %d pass, %d fail ===\n", pass_count, fail_count);

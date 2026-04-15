@@ -543,7 +543,7 @@
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -17465,6 +17720,132 @@
+@@ -17465,6 +17720,133 @@
  	}
        break;
  
@@ -641,17 +641,18 @@
 +	emit_insn (gen_mxu2_la1qx_b (target, base, offset));
 +	return target;
 +      }
-+    /* MXU2 store builtins: same approach, no target.  */
++    /* MXU2 store builtins: same approach, no target.
++       Force value into a register to avoid mem-to-mem moves.  */
 +    case CODE_FOR_mxu2_su1q_b:
 +      {
-+	rtx value = ops[0].value;
++	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 +	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 +	emit_insn (gen_mxu2_su1q_b (value, base, ops[2].value));
 +	return const0_rtx;
 +      }
 +    case CODE_FOR_mxu2_su1qx_b:
 +      {
-+	rtx value = ops[0].value;
++	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 +	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 +	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
 +	emit_insn (gen_mxu2_su1qx_b (value, base, offset));
@@ -659,14 +660,14 @@
 +      }
 +    case CODE_FOR_mxu2_sa1q_b:
 +      {
-+	rtx value = ops[0].value;
++	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 +	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 +	emit_insn (gen_mxu2_sa1q_b (value, base, ops[2].value));
 +	return const0_rtx;
 +      }
 +    case CODE_FOR_mxu2_sa1qx_b:
 +      {
-+	rtx value = ops[0].value;
++	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 +	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 +	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
 +	emit_insn (gen_mxu2_sa1qx_b (value, base, offset));
@@ -676,7 +677,7 @@
      case CODE_FOR_msa_insert_b:
      case CODE_FOR_msa_insert_h:
      case CODE_FOR_msa_insert_w:
-@@ -20232,6 +20613,9 @@
+@@ -20232,6 +20614,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -686,7 +687,7 @@
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21498,16 @@
+@@ -21114,6 +21499,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }

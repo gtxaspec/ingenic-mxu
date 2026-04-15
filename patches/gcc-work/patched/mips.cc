@@ -17814,17 +17814,18 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
 	emit_insn (gen_mxu2_la1qx_b (target, base, offset));
 	return target;
       }
-    /* MXU2 store builtins: same approach, no target.  */
+    /* MXU2 store builtins: same approach, no target.
+       Force value into a register to avoid mem-to-mem moves.  */
     case CODE_FOR_mxu2_su1q_b:
       {
-	rtx value = ops[0].value;
+	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 	emit_insn (gen_mxu2_su1q_b (value, base, ops[2].value));
 	return const0_rtx;
       }
     case CODE_FOR_mxu2_su1qx_b:
       {
-	rtx value = ops[0].value;
+	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
 	emit_insn (gen_mxu2_su1qx_b (value, base, offset));
@@ -17832,14 +17833,14 @@ mips_expand_builtin_insn (enum insn_code icode, unsigned int nops,
       }
     case CODE_FOR_mxu2_sa1q_b:
       {
-	rtx value = ops[0].value;
+	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 	emit_insn (gen_mxu2_sa1q_b (value, base, ops[2].value));
 	return const0_rtx;
       }
     case CODE_FOR_mxu2_sa1qx_b:
       {
-	rtx value = ops[0].value;
+	rtx value = copy_to_mode_reg (V16QImode, ops[0].value);
 	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
 	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
 	emit_insn (gen_mxu2_sa1qx_b (value, base, offset));
