@@ -127,14 +127,11 @@ if (mxu3_available()) {
 }
 ```
 
-### DSP kernels (`mxu2_dsp.h`)
+### DSP kernels (built into `mxu2_shim.h`)
 
-Optimized DSP functions using chained MXU2 inline assembly blocks (no stack round-trips):
+The shim includes optimized DSP functions using chained inline assembly blocks (no stack round-trips). These are only available on the shim path (without `-mmxu2`); with the native toolchain, write the equivalent using builtins and let the compiler handle register allocation.
 
-- Radix-2 butterfly
-- Q15 multiply-accumulate
-- FIR filter tap
-- Vector dot product
+Functions: `mxu2_vec_add_w`, `mxu2_vec_mul_w`, `mxu2_vec_madd_w`, `mxu2_butterfly_w`, `mxu2_q15_madd_h`, `mxu2_fir4_w`, `mxu2_clamp_w`, `mxu2_dot4_w`, `mxu2_interleave_h`, `mxu2_deinterleave_h`, `mxu2_sad_b`
 
 ---
 
@@ -220,7 +217,6 @@ MXU2/MXU3 use COP2 -- the kernel must handle COP2 Unusable exceptions by setting
 |------|-------------|
 | `mxu2_shim.h` | MXU2 128-bit shim (368 ops, any compiler) |
 | `mxu3_shim.h` | MXU3 512-bit shim (498 ops, any compiler) |
-| `mxu2_dsp.h` | Optimized MXU2 DSP kernels |
 | `test_builtins_full.c` | MXU2 native builtin test (382 tests) |
 | `test_shim_mxu2.c` | MXU2 shim test (431 tests) |
 | `test_shim_mxu3.c` | MXU3 shim test (455 tests) |

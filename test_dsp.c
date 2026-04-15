@@ -1,4 +1,4 @@
-#include "mxu2_dsp.h"
+#include "mxu2_shim.h"
 void test_stereo(void);
 #include <stdio.h>
 #include <string.h>
