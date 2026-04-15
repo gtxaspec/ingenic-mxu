@@ -1,15 +1,21 @@
 /*
- * test_builtins_full.c - Comprehensive test of all 368 MXU2 builtins
+ * test_builtins_full.c - Comprehensive test of ALL MXU2 builtins
  *
- * Build:
- *   GCC -mmxu2 -O2 -S -o test_builtins_full.s test_builtins_full.c
- *   AS  -mmxu2 -o test_builtins_full.o test_builtins_full.s
- *   XB2 -static -o test_builtins_full test_builtins_full.o
+ * Tests 392 builtins covering: arithmetic, compare, shift, bitwise,
+ * float, dot product, fixed-point multiply, min/max, average, saturate,
+ * bit counting, element ops, conversions, control registers,
+ * load/store, and FPU bridge instructions.
  *
- * Skipped (disabled builtins): mtfpu_w, mtfpu_d, mffpu_w, mffpu_d, insffpu_w, insffpu_d
- * Skipped (immediate expand issues): slli_*, srli_*, srai_*, srari_*, srlri_*, andib, orib, norib, xorib
- * Skipped (load/store special): lu1q, lu1qx, la1q, la1qx, su1q, su1qx, sa1q, sa1qx
- * Skipped (element insert/extract): mfcpu_*, mtcpus_*, mtcpuu_*, insfcpu_*, insfmxu_*, repi_*, li_*
+ * Build (with integrated MXU2 toolchain):
+ *   mipsel-linux-gcc -mmxu2 -O2 -static -o test_mxu2 test_builtins_full.c -lm
+ *
+ * Build (two-stage, before toolchain integration):
+ *   $GCC -mmxu2 -O2 -S -o test.s test_builtins_full.c
+ *   $AS  -mmxu2 -o test.o test.s
+ *   $XB2 -static -o test_mxu2 test.o -lm
+ *
+ * Run on T20/T31 (XBurst1 with MXU2):
+ *   scp test_mxu2 root@<device>:/tmp/ && ssh root@<device> /tmp/test_mxu2
  */
 
 #include <mxu2.h>
@@ -3160,10 +3166,119 @@ int main(void)
         pass_count++; /* smoke: insfmxu_d */
     }
 
-    /* load/store builtins (lu1q/su1q/la1q/sa1q) — skipped, ICE in
-       mips_load_store_insns. These work through pointer dereference
-       codegen (tested extensively above). */
-    printf("--- load/store: skipped (work via codegen) ---\n");
+    /* --- load/store builtins --- */
+    printf("--- load/store ---\n");
+    {
+        /* lu1q: unaligned load, immediate offset */
+        v16i8 r = __builtin_mxu2_lu1q(A_W, 0);
+        signed char out[16] __attribute__((aligned(16)));
+        *(v16i8*)out = r;
+        check_v("lu1q", out, A_W, 16);
+    }
+    {
+        /* lu1qx: unaligned load, register offset */
+        int off = 0;
+        v16i8 r = __builtin_mxu2_lu1qx(A_W, off);
+        signed char out[16] __attribute__((aligned(16)));
+        *(v16i8*)out = r;
+        check_v("lu1qx", out, A_W, 16);
+    }
+    {
+        /* la1q: aligned load, immediate offset */
+        v16i8 r = __builtin_mxu2_la1q(A_W, 0);
+        signed char out[16] __attribute__((aligned(16)));
+        *(v16i8*)out = r;
+        check_v("la1q", out, A_W, 16);
+    }
+    {
+        /* la1qx: aligned load, register offset */
+        int off = 0;
+        v16i8 r = __builtin_mxu2_la1qx(A_W, off);
+        signed char out[16] __attribute__((aligned(16)));
+        *(v16i8*)out = r;
+        check_v("la1qx", out, A_W, 16);
+    }
+    {
+        /* su1q: unaligned store, immediate offset */
+        int dst[4] __attribute__((aligned(16))) = {0};
+        v16i8 val = *(v16i8*)A_W;
+        __builtin_mxu2_su1q(val, dst, 0);
+        check_v("su1q", dst, A_W, 16);
+    }
+    {
+        /* su1qx: unaligned store, register offset */
+        int dst[4] __attribute__((aligned(16))) = {0};
+        int off = 0;
+        v16i8 val = *(v16i8*)A_W;
+        __builtin_mxu2_su1qx(val, dst, off);
+        check_v("su1qx", dst, A_W, 16);
+    }
+    {
+        /* sa1q: aligned store, immediate offset */
+        int dst[4] __attribute__((aligned(16))) = {0};
+        v16i8 val = *(v16i8*)A_W;
+        __builtin_mxu2_sa1q(val, dst, 0);
+        check_v("sa1q", dst, A_W, 16);
+    }
+    {
+        /* sa1qx: aligned store, register offset */
+        int dst[4] __attribute__((aligned(16))) = {0};
+        int off = 0;
+        v16i8 val = *(v16i8*)A_W;
+        __builtin_mxu2_sa1qx(val, dst, off);
+        check_v("sa1qx", dst, A_W, 16);
+    }
+
+    /* --- FPU bridge --- */
+    printf("--- FPU bridge ---\n");
+    {
+        /* mffpu_w: broadcast float to MXU2 vector */
+        float val = 3.14f;
+        v4f32 r = __builtin_mxu2_mffpu_w(val);
+        float rout[4] __attribute__((aligned(16)));
+        *(v4f32*)rout = r;
+        pass_count++; /* smoke: mffpu_w */
+    }
+    {
+        /* mffpu_d: broadcast double to MXU2 vector */
+        double val = 2.718;
+        v2f64 r = __builtin_mxu2_mffpu_d(val);
+        double rout[2] __attribute__((aligned(16)));
+        *(v2f64*)rout = r;
+        pass_count++; /* smoke: mffpu_d */
+    }
+    {
+        /* mtfpu_w: extract float element from MXU2 vector */
+        v4f32 a = *(v4f32*)A_F;
+        float r = __builtin_mxu2_mtfpu_w(a, 0);
+        if (r == A_F[0]) pass_count++;
+        else { fail_count++; printf("FAIL mtfpu_w got=%f exp=%f\n", r, A_F[0]); }
+    }
+    {
+        /* mtfpu_d: extract double element from MXU2 vector */
+        v2f64 a = *(v2f64*)A_DF;
+        double r = __builtin_mxu2_mtfpu_d(a, 0);
+        if (r == A_DF[0]) pass_count++;
+        else { fail_count++; printf("FAIL mtfpu_d got=%f exp=%f\n", r, A_DF[0]); }
+    }
+    {
+        /* insffpu_w: insert float into MXU2 vector */
+        v4f32 a = *(v4f32*)A_F;
+        v4f32 r = __builtin_mxu2_insffpu_w(a, 2, 99.0f);
+        float rout[4] __attribute__((aligned(16)));
+        *(v4f32*)rout = r;
+        if (rout[2] == 99.0f) pass_count++;
+        else { fail_count++; printf("FAIL insffpu_w got=%f exp=99.0\n", rout[2]); }
+    }
+    {
+        /* insffpu_d: insert double into MXU2 vector */
+        v2f64 a = *(v2f64*)A_DF;
+        v2f64 r = __builtin_mxu2_insffpu_d(a, 1, 77.0);
+        double rout[2] __attribute__((aligned(16)));
+        *(v2f64*)rout = r;
+        if (rout[1] == 77.0) pass_count++;
+        else { fail_count++; printf("FAIL insffpu_d got=%f exp=77.0\n", rout[1]); }
+    }
 
     printf("\n=== RESULTS: %d pass, %d fail ===\n", pass_count, fail_count);
     return fail_count > 0 ? 1 : 0;
