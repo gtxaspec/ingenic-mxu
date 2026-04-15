@@ -222,8 +222,8 @@ MXU2/MXU3 use COP2 -- the kernel must handle COP2 Unusable exceptions by setting
 | `mxu3_shim.h` | MXU3 512-bit shim (498 ops, any compiler) |
 | `mxu2_dsp.h` | Optimized MXU2 DSP kernels |
 | `test_builtins_full.c` | MXU2 native builtin test (382 tests) |
-| `test_all_mxu2.c` | MXU2 shim test (431 tests) |
-| `test_mxu3.c` | MXU3 shim test (455 tests) |
+| `test_shim_mxu2.c` | MXU2 shim test (431 tests) |
+| `test_shim_mxu3.c` | MXU3 shim test (455 tests) |
 | `test_dsp.c` | DSP kernel tests |
 | `mxu_probe.c` | Hardware capability probe |
 | `t40-mxu3-fix.patch` | T40 kernel patch (MXU3 on CPU1) |
