@@ -226,7 +226,15 @@ MXU2/MXU3 use COP2 -- the kernel must handle COP2 Unusable exceptions by setting
 | `FINDINGS.md` | MXU2 reverse-engineering notes |
 | `MXU3_FINDINGS.md` | MXU3 encoding reference |
 | `patches/` | GCC and binutils toolchain patches |
-| `docs/` | Engineering documentation |
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Porting Guide](docs/porting-guide.md) | How to add MXU2 acceleration to your code (loop vectorization, MAC, FFT butterfly, audio codec patterns) |
+| [Builtin Reference](docs/builtin-reference.md) | Complete `__builtin_mxu2_*` API with types, signatures, and examples |
+| [Architecture Reference](docs/mxu2-architecture.md) | Register file, instruction encoding, COP2 differences, instruction categories |
+| [Toolchain Patches](docs/toolchain-patches.md) | How to apply patches, two-stage build, patch internals |
 
 ## License
 
