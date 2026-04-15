@@ -1,0 +1,180 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alfonso Gamboa <gtxent@gmail.com>
+Subject: [PATCH 3/4] mips: add MXU2 assembler and disassembler support
+
+Add assembler and disassembler support for Ingenic MXU2 instructions:
+
+Assembler (gas/config/tc-mips.c):
+  - New options: -mmxu2 / -mno-mxu2
+  - Register type RTYPE_MXU128 for $vr0-$vr31 vector registers
+  - ASE registration in mips_ase_groups[]
+  - Operand prefix '=' handling alongside existing '+', 'm', '-'
+  - Register type mapping for OP_REG_MXU128 and OP_REG_MXU128_CR
+
+Disassembler (opcodes/mips-dis.c):
+  - New option: -M mxu2
+  - Register print handlers for $vr0-$vr31
+  - Operand prefix '=' support
+---
+--- a/gas/config/tc-mips.c
++++ b/gas/config/tc-mips.c
+@@ -1582,6 +1582,8 @@
+     OPTION_NO_LOONGSON_EXT,
+     OPTION_LOONGSON_EXT2,
+     OPTION_NO_LOONGSON_EXT2,
++    OPTION_MXU128,
++    OPTION_NO_MXU128,
+     OPTION_END_OF_ENUM
+   };
+ 
+@@ -1650,6 +1652,8 @@
+   {"mno-loongson-ext", no_argument, NULL, OPTION_NO_LOONGSON_EXT},
+   {"mloongson-ext2", no_argument, NULL, OPTION_LOONGSON_EXT2},
+   {"mno-loongson-ext2", no_argument, NULL, OPTION_NO_LOONGSON_EXT2},
++  {"mmxu2", no_argument, NULL, OPTION_MXU128},
++  {"mno-mxu2", no_argument, NULL, OPTION_NO_MXU128},
+ 
+   /* Old-style architecture options.  Don't add more of these.  */
+   {"m4650", no_argument, NULL, OPTION_M4650},
+@@ -1871,6 +1875,11 @@
+     OPTION_LOONGSON_EXT2, OPTION_NO_LOONGSON_EXT2,
+     0, 0, -1, -1,
+     -1 },
++
++  { "mxu2", ASE_MXU128, 0,
++    OPTION_MXU128, OPTION_NO_MXU128,
++    0, 0, -1, -1,
++    -1 },
+ };
+ 
+ /* The set of ASEs that require -mfp64.  */
+@@ -2704,6 +2713,7 @@
+ #define RTYPE_R5900_R	0x0200000
+ #define RTYPE_R5900_ACC	0x0400000
+ #define RTYPE_MSA	0x0800000
++#define RTYPE_MXU128	0x1000000
+ #define RWARN		0x8000000
+ 
+ #define GENERIC_REGISTER_NUMBERS \
+@@ -3594,7 +3604,8 @@
+ 	      used_bits &= ~0x6000;
+ 	  }
+ 	/* Skip prefix characters.  */
+-	if (decode_operand && (*s == '+' || *s == 'm' || *s == '-'))
++	if (decode_operand && (*s == '+' || *s == 'm' || *s == '-'
++	    || *s == '='))
+ 	  ++s;
+ 	opno += 1;
+ 	break;
+@@ -3833,6 +3844,11 @@
+       sprintf (regname, "$w%d", i);
+       symbol_table_insert (symbol_new (regname, reg_section,
+ 				       &zero_address_frag, RTYPE_MSA | i));
++
++      /* MXU2 register.  */
++      sprintf (regname, "$vr%d", i);
++      symbol_table_insert (symbol_new (regname, reg_section,
++				       &zero_address_frag, RTYPE_MXU128 | i));
+     }
+ 
+   obstack_init (&mips_operand_tokens);
+@@ -5059,6 +5075,8 @@
+     case OP_REG_CONTROL:
+       if (opcode->name[strlen (opcode->name) - 1] == '0')
+ 	return RTYPE_NUM | RTYPE_CP0;
++      if (opcode->name[strlen (opcode->name) - 1] == '2')
++	return RTYPE_NUM | RTYPE_MXU128;
+       return RTYPE_NUM;
+ 
+     case OP_REG_HW:
+@@ -5087,6 +5105,12 @@
+ 
+     case OP_REG_MSA_CTRL:
+       return RTYPE_NUM;
++
++    case OP_REG_MXU128:
++      return RTYPE_MXU128;
++
++    case OP_REG_MXU128_CR:
++      return RTYPE_NUM;
+     }
+   abort ();
+ }
+@@ -8455,7 +8479,7 @@
+ 	abort ();
+ 
+       /* Skip prefixes.  */
+-      if (*args == '+' || *args == 'm' || *args == '-')
++      if (*args == '+' || *args == 'm' || *args == '-' || *args == '=')
+ 	args++;
+ 
+       if (mips_optional_operand_p (operand)
+@@ -9168,7 +9192,7 @@
+ 	    uval |= (uval << 5);
+ 	  insn_insert_operand (&insn, operand, uval);
+ 
+-	  if (*fmt == '+' || *fmt == 'm' || *fmt == '-')
++	  if (*fmt == '+' || *fmt == 'm' || *fmt == '-' || *fmt == '=')
+ 	    ++fmt;
+ 	  break;
+ 	}
+@@ -20439,6 +20463,9 @@
+ -mloongson-ext2		generate Loongson EXTensions R2 (EXT2) instructions\n\
+ -mno-loongson-ext2	do not generate Loongson EXTensions R2 Instructions\n"));
+   fprintf (stream, _("\
++-mmxu2			generate Ingenic MXU2 128-bit SIMD instructions\n\
++-mno-mxu2		do not generate Ingenic MXU2 instructions\n"));
++  fprintf (stream, _("\
+ -minsn32		only generate 32-bit microMIPS instructions\n\
+ -mno-insn32		generate all microMIPS instructions\n"));
+ #if DEFAULT_MIPS_FIX_LOONGSON3_LLSC
+--- a/opcodes/mips-dis.c
++++ b/opcodes/mips-dis.c
+@@ -1009,6 +1009,12 @@
+       return true;
+     }
+ 
++  if (startswith (option, "mxu2"))
++    {
++      mips_ase |= ASE_MXU128;
++      return true;
++    }
++
+   return false;
+ }
+ 
+@@ -1259,6 +1265,14 @@
+ 		 msa_control_names[regno]);
+       break;
+ 
++    case OP_REG_MXU128:
++      infprintf (info->stream, dis_style_register, "$vr%d", regno);
++      break;
++
++    case OP_REG_MXU128_CR:
++      infprintf (info->stream, dis_style_register, "$%d", regno);
++      break;
++
+     }
+ }
+ 
+@@ -1974,7 +1988,7 @@
+ 	      print_insn_arg (info, &state, opcode, operand, base_pc,
+ 			      mips_extract_operand (operand, insn));
+ 	    }
+-	  if (*s == 'm' || *s == '+' || *s == '-')
++	  if (*s == 'm' || *s == '+' || *s == '-' || *s == '=')
+ 	    ++s;
+ 	  break;
+ 	}
+@@ -2770,6 +2784,10 @@
+ 		  N_("Recognize the Loongson EXTensions R2 (EXT2) "
+ 		     " instructions.\n"),
+ 		  MIPS_OPTION_ARG_NONE },
++  { "mxu2",
++		  N_("Recognize Ingenic MXU2 128-bit SIMD"
++		     " instructions.\n"),
++		  MIPS_OPTION_ARG_NONE },
+   { "gpr-names=", N_("Print GPR names according to specified ABI.\n\
+                   Default: based on binary being disassembled.\n"),
+ 		  MIPS_OPTION_ARG_ABI },

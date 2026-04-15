@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Alfonso Gamboa <gtxent@gmail.com>
+Subject: [PATCH 1/4] mips: add Ingenic MXU2 ASE flag and register types
+
+Add ASE_MXU128 extension flag and OP_REG_MXU128/OP_REG_MXU128_CR
+operand types for the Ingenic MXU2 128-bit SIMD extension.
+
+MXU2 is found on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41)
+processors. It uses COP2 registers ($vr0-$vr31) for 128-bit vector
+operations.
+---
+--- a/include/opcode/mips.h
++++ b/include/opcode/mips.h
+@@ -233,7 +233,13 @@
+   OP_REG_MSA,
+ 
+   /* MSA control registers $0-$31.  */
+-  OP_REG_MSA_CTRL
++  OP_REG_MSA_CTRL,
++
++  /* Ingenic MXU2 vector registers $vr0-$vr31 (128-bit).  */
++  OP_REG_MXU128,
++
++  /* Ingenic MXU2 control registers.  */
++  OP_REG_MXU128_CR
+ };
+ 
+ /* Base class for all operands.  */
+@@ -1065,6 +1071,8 @@
+ /* The Enhanced VA Scheme (EVA) extension has instructions which are
+    only valid for the R6 ISA.  */
+ #define ASE_EVA_R6		0x02000000
++/* Ingenic MXU2 128-bit SIMD (XBurst1/XBurst2 COP2).  */
++#define ASE_MXU128		0x04000000
+ 
+ /* MIPS ISA defines, use instead of hardcoding ISA level.  */
+ 
