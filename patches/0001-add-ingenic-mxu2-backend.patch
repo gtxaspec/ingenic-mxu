@@ -1,12 +1,3 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: gtxaspec <gtxent@gmail.com>
-Date: Sun, 13 Apr 2026 12:00:00 -0700
-Subject: [PATCH] add Ingenic MXU2 backend support
-
-Add native GCC backend support for Ingenic MXU2 128-bit SIMD extension.
-MXU2 uses COP2 registers ($vr0-$vr31) for 128-bit vector operations
-on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
----
 --- a/gcc/config/mips/constraints.md
 +++ b/gcc/config/mips/constraints.md
 @@ -32,6 +32,9 @@
@@ -552,24 +543,24 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
    /* Built-in functions for MIPSr6.  */
    MIPSR6_BUILTIN_PURE (min_a_s, MIPS_SF_FTYPE_SF_SF),
    MIPSR6_BUILTIN_PURE (min_a_d, MIPS_DF_FTYPE_DF_DF),
-@@ -17465,6 +17720,68 @@
+@@ -17465,6 +17720,132 @@
  	}
        break;
  
 +    /* MXU2 immediate shifts (vashl/vashr/vlshr patterns):
 +       convert scalar immediate to vector constant.  */
-+    case CODE_FOR_mxu2_vashlv16qi3:
-+    case CODE_FOR_mxu2_vashlv8hi3:
-+    case CODE_FOR_mxu2_vashlv4si3:
-+    case CODE_FOR_mxu2_vashlv2di3:
-+    case CODE_FOR_mxu2_vashrv16qi3:
-+    case CODE_FOR_mxu2_vashrv8hi3:
-+    case CODE_FOR_mxu2_vashrv4si3:
-+    case CODE_FOR_mxu2_vashrv2di3:
-+    case CODE_FOR_mxu2_vlshrv16qi3:
-+    case CODE_FOR_mxu2_vlshrv8hi3:
-+    case CODE_FOR_mxu2_vlshrv4si3:
-+    case CODE_FOR_mxu2_vlshrv2di3:
++    case CODE_FOR_vashlv16qi3:
++    case CODE_FOR_vashlv8hi3:
++    case CODE_FOR_vashlv4si3:
++    case CODE_FOR_vashlv2di3:
++    case CODE_FOR_vashrv16qi3:
++    case CODE_FOR_vashrv8hi3:
++    case CODE_FOR_vashrv4si3:
++    case CODE_FOR_vashrv2di3:
++    case CODE_FOR_vlshrv16qi3:
++    case CODE_FOR_vlshrv8hi3:
++    case CODE_FOR_vlshrv4si3:
++    case CODE_FOR_vlshrv2di3:
 +      gcc_assert (has_target_p && nops == 3);
 +      if (CONST_INT_P (ops[2].value))
 +	{
@@ -618,10 +609,74 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +	ops[2].value = GEN_INT (INTVAL (ops[2].value) & 0xFF);
 +      break;
 +
++    /* MXU2 load builtins: bypass maybe_expand_insn, call gen functions
++       directly to construct proper MEM RTL from pointer+offset args.  */
++    case CODE_FOR_mxu2_lu1q_b:
++      {
++	rtx target = gen_reg_rtx (V16QImode);
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	emit_insn (gen_mxu2_lu1q_b (target, base, ops[2].value));
++	return target;
++      }
++    case CODE_FOR_mxu2_lu1qx_b:
++      {
++	rtx target = gen_reg_rtx (V16QImode);
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
++	emit_insn (gen_mxu2_lu1qx_b (target, base, offset));
++	return target;
++      }
++    case CODE_FOR_mxu2_la1q_b:
++      {
++	rtx target = gen_reg_rtx (V16QImode);
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	emit_insn (gen_mxu2_la1q_b (target, base, ops[2].value));
++	return target;
++      }
++    case CODE_FOR_mxu2_la1qx_b:
++      {
++	rtx target = gen_reg_rtx (V16QImode);
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
++	emit_insn (gen_mxu2_la1qx_b (target, base, offset));
++	return target;
++      }
++    /* MXU2 store builtins: same approach, no target.  */
++    case CODE_FOR_mxu2_su1q_b:
++      {
++	rtx value = ops[0].value;
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	emit_insn (gen_mxu2_su1q_b (value, base, ops[2].value));
++	return const0_rtx;
++      }
++    case CODE_FOR_mxu2_su1qx_b:
++      {
++	rtx value = ops[0].value;
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
++	emit_insn (gen_mxu2_su1qx_b (value, base, offset));
++	return const0_rtx;
++      }
++    case CODE_FOR_mxu2_sa1q_b:
++      {
++	rtx value = ops[0].value;
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	emit_insn (gen_mxu2_sa1q_b (value, base, ops[2].value));
++	return const0_rtx;
++      }
++    case CODE_FOR_mxu2_sa1qx_b:
++      {
++	rtx value = ops[0].value;
++	rtx base = copy_to_mode_reg (Pmode, ops[1].value);
++	rtx offset = copy_to_mode_reg (Pmode, ops[2].value);
++	emit_insn (gen_mxu2_sa1qx_b (value, base, offset));
++	return const0_rtx;
++      }
++
      case CODE_FOR_msa_insert_b:
      case CODE_FOR_msa_insert_h:
      case CODE_FOR_msa_insert_w:
-@@ -20232,6 +20549,9 @@
+@@ -20232,6 +20613,9 @@
        if (TARGET_MSA)
  	sorry ("MSA MIPS16 code");
  
@@ -631,7 +686,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
        if (!TARGET_EXPLICIT_RELOCS)
  	sorry ("MIPS16 requires %<-mexplicit-relocs%>");
      }
-@@ -21114,6 +21434,16 @@
+@@ -21114,6 +21498,16 @@
        for (regno = DSP_ACC_REG_FIRST; regno <= DSP_ACC_REG_LAST; regno += 2)
  	mips_swap_registers (regno);
      }
@@ -822,9 +877,43 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
  (define_predicate "aq10b_operand"
    (and (match_code "const_int")
         (match_test "mips_signed_immediate_p (INTVAL (op), 10, 0)")))
+--- a/gcc/config/mips/mips-ftypes.def
++++ b/gcc/config/mips/mips-ftypes.def
+@@ -36,6 +36,7 @@
+ DEF_MIPS_FTYPE (1, (DF, DF))
+ DEF_MIPS_FTYPE (2, (DF, DF, DF))
+ DEF_MIPS_FTYPE (1, (DF, V2DF))
++DEF_MIPS_FTYPE (2, (DF, V2DF, UQI))
+ 
+ DEF_MIPS_FTYPE (2, (DI, DI, DI))
+ DEF_MIPS_FTYPE (2, (DI, DI, SI))
+@@ -57,6 +58,7 @@
+ DEF_MIPS_FTYPE (2, (SF, SF, SF))
+ DEF_MIPS_FTYPE (1, (SF, V2SF))
+ DEF_MIPS_FTYPE (1, (SF, V4SF))
++DEF_MIPS_FTYPE (2, (SF, V4SF, UQI))
+ 
+ DEF_MIPS_FTYPE (2, (SI, DI, SI))
+ DEF_MIPS_FTYPE (2, (SI, POINTER, SI))
+@@ -154,6 +156,7 @@
+ DEF_MIPS_FTYPE (1, (V2DF, V2DF))
+ DEF_MIPS_FTYPE (2, (V2DF, V2DF, V2DF))
+ DEF_MIPS_FTYPE (3, (V2DF, V2DF, V2DF, V2DF))
++DEF_MIPS_FTYPE (3, (V2DF, V2DF, UQI, DF))
+ DEF_MIPS_FTYPE (2, (V2DF, V2DF, V2DI))
+ DEF_MIPS_FTYPE (1, (V2DF, V2DI))
+ DEF_MIPS_FTYPE (1, (V2DF, V4SF))
+@@ -219,6 +222,7 @@
+ DEF_MIPS_FTYPE (1, (V4SF, V4SF))
+ DEF_MIPS_FTYPE (2, (V4SF, V4SF, V4SF))
+ DEF_MIPS_FTYPE (3, (V4SF, V4SF, V4SF, V4SF))
++DEF_MIPS_FTYPE (3, (V4SF, V4SF, UQI, SF))
+ DEF_MIPS_FTYPE (2, (V4SF, V4SF, V4SI))
+ DEF_MIPS_FTYPE (1, (V4SF, V4SI))
+ DEF_MIPS_FTYPE (1, (V4SF, V8HI))
 --- a/gcc/config/mips/ingenic-mxu2.def
 +++ b/gcc/config/mips/ingenic-mxu2.def
-@@ -0,0 +1,505 @@
+@@ -0,0 +1,504 @@
 +/* Define a MXU2 MIPS_BUILTIN_DIRECT function __builtin_mxu2_<INSN>
 +   for instruction CODE_FOR_mxu2_<INSN>.  FUNCTION_TYPE is a
 +   builtin_description field.  */
@@ -842,72 +931,71 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +    FUNCTION_TYPE, mips_builtin_avail_mxu2, false }
 +
 +/* For ingenic MXU2 instructions.  */
-+#define CODE_FOR_mxu2_add_b CODE_FOR_mxu2_addv16qi3
-+#define CODE_FOR_mxu2_add_h CODE_FOR_mxu2_addv8hi3
-+#define CODE_FOR_mxu2_add_w CODE_FOR_mxu2_addv4si3
-+#define CODE_FOR_mxu2_add_d CODE_FOR_mxu2_addv2di3
-+#define CODE_FOR_mxu2_sub_b CODE_FOR_mxu2_subv16qi3
-+#define CODE_FOR_mxu2_sub_h CODE_FOR_mxu2_subv8hi3
-+#define CODE_FOR_mxu2_sub_w CODE_FOR_mxu2_subv4si3
-+#define CODE_FOR_mxu2_sub_d CODE_FOR_mxu2_subv2di3
-+/* #define CODE_FOR_mxu2_mtfpu_w CODE_FOR_mxu2_mtfpu_w_f
-+/* #define CODE_FOR_mxu2_mtfpu_d CODE_FOR_mxu2_mtfpu_d_f
-+/* #define CODE_FOR_mxu2_insffpu_w CODE_FOR_mxu2_insffpu_w_f
-+/* #define CODE_FOR_mxu2_insffpu_d CODE_FOR_mxu2_insffpu_d_f
-+/* #define CODE_FOR_mxu2_mffpu_w CODE_FOR_mxu2_mffpu_w_f
-+/* #define CODE_FOR_mxu2_mffpu_d CODE_FOR_mxu2_mffpu_d_f
-+*/
-+#define CODE_FOR_mxu2_sll_b CODE_FOR_mxu2_vashlv16qi3
-+#define CODE_FOR_mxu2_sll_h CODE_FOR_mxu2_vashlv8hi3
-+#define CODE_FOR_mxu2_sll_w CODE_FOR_mxu2_vashlv4si3
-+#define CODE_FOR_mxu2_sll_d CODE_FOR_mxu2_vashlv2di3
-+#define CODE_FOR_mxu2_sra_b CODE_FOR_mxu2_vashrv16qi3
-+#define CODE_FOR_mxu2_sra_h CODE_FOR_mxu2_vashrv8hi3
-+#define CODE_FOR_mxu2_sra_w CODE_FOR_mxu2_vashrv4si3
-+#define CODE_FOR_mxu2_sra_d CODE_FOR_mxu2_vashrv2di3
-+#define CODE_FOR_mxu2_srl_b CODE_FOR_mxu2_vlshrv16qi3
-+#define CODE_FOR_mxu2_srl_h CODE_FOR_mxu2_vlshrv8hi3
-+#define CODE_FOR_mxu2_srl_w CODE_FOR_mxu2_vlshrv4si3
-+#define CODE_FOR_mxu2_srl_d CODE_FOR_mxu2_vlshrv2di3
-+#define CODE_FOR_mxu2_divs_b CODE_FOR_mxu2_divv16qi3
-+#define CODE_FOR_mxu2_divs_h CODE_FOR_mxu2_divv8hi3
-+#define CODE_FOR_mxu2_divs_w CODE_FOR_mxu2_divv4si3
-+#define CODE_FOR_mxu2_divs_d CODE_FOR_mxu2_divv2di3
-+#define CODE_FOR_mxu2_divu_b CODE_FOR_mxu2_udivv16qi3
-+#define CODE_FOR_mxu2_divu_h CODE_FOR_mxu2_udivv8hi3
-+#define CODE_FOR_mxu2_divu_w CODE_FOR_mxu2_udivv4si3
-+#define CODE_FOR_mxu2_divu_d CODE_FOR_mxu2_udivv2di3
-+#define CODE_FOR_mxu2_mods_b CODE_FOR_mxu2_modv16qi3
-+#define CODE_FOR_mxu2_mods_h CODE_FOR_mxu2_modv8hi3
-+#define CODE_FOR_mxu2_mods_w CODE_FOR_mxu2_modv4si3
-+#define CODE_FOR_mxu2_mods_d CODE_FOR_mxu2_modv2di3
-+#define CODE_FOR_mxu2_modu_b CODE_FOR_mxu2_umodv16qi3
-+#define CODE_FOR_mxu2_modu_h CODE_FOR_mxu2_umodv8hi3
-+#define CODE_FOR_mxu2_modu_w CODE_FOR_mxu2_umodv4si3
-+#define CODE_FOR_mxu2_modu_d CODE_FOR_mxu2_umodv2di3
-+#define CODE_FOR_mxu2_mul_b CODE_FOR_mxu2_mulv16qi3
-+#define CODE_FOR_mxu2_mul_h CODE_FOR_mxu2_mulv8hi3
-+#define CODE_FOR_mxu2_mul_w CODE_FOR_mxu2_mulv4si3
-+#define CODE_FOR_mxu2_mul_d CODE_FOR_mxu2_mulv2di3
++#define CODE_FOR_mxu2_add_b CODE_FOR_addv16qi3
++#define CODE_FOR_mxu2_add_h CODE_FOR_addv8hi3
++#define CODE_FOR_mxu2_add_w CODE_FOR_addv4si3
++#define CODE_FOR_mxu2_add_d CODE_FOR_addv2di3
++#define CODE_FOR_mxu2_sub_b CODE_FOR_subv16qi3
++#define CODE_FOR_mxu2_sub_h CODE_FOR_subv8hi3
++#define CODE_FOR_mxu2_sub_w CODE_FOR_subv4si3
++#define CODE_FOR_mxu2_sub_d CODE_FOR_subv2di3
++#define CODE_FOR_mxu2_mtfpu_w CODE_FOR_mxu2_mtfpu_w_f
++#define CODE_FOR_mxu2_mtfpu_d CODE_FOR_mxu2_mtfpu_d_f
++#define CODE_FOR_mxu2_insffpu_w CODE_FOR_mxu2_insffpu_w_f
++#define CODE_FOR_mxu2_insffpu_d CODE_FOR_mxu2_insffpu_d_f
++#define CODE_FOR_mxu2_mffpu_w CODE_FOR_mxu2_mffpu_w_f
++#define CODE_FOR_mxu2_mffpu_d CODE_FOR_mxu2_mffpu_d_f
++#define CODE_FOR_mxu2_sll_b CODE_FOR_vashlv16qi3
++#define CODE_FOR_mxu2_sll_h CODE_FOR_vashlv8hi3
++#define CODE_FOR_mxu2_sll_w CODE_FOR_vashlv4si3
++#define CODE_FOR_mxu2_sll_d CODE_FOR_vashlv2di3
++#define CODE_FOR_mxu2_sra_b CODE_FOR_vashrv16qi3
++#define CODE_FOR_mxu2_sra_h CODE_FOR_vashrv8hi3
++#define CODE_FOR_mxu2_sra_w CODE_FOR_vashrv4si3
++#define CODE_FOR_mxu2_sra_d CODE_FOR_vashrv2di3
++#define CODE_FOR_mxu2_srl_b CODE_FOR_vlshrv16qi3
++#define CODE_FOR_mxu2_srl_h CODE_FOR_vlshrv8hi3
++#define CODE_FOR_mxu2_srl_w CODE_FOR_vlshrv4si3
++#define CODE_FOR_mxu2_srl_d CODE_FOR_vlshrv2di3
++#define CODE_FOR_mxu2_divs_b CODE_FOR_divv16qi3
++#define CODE_FOR_mxu2_divs_h CODE_FOR_divv8hi3
++#define CODE_FOR_mxu2_divs_w CODE_FOR_divv4si3
++#define CODE_FOR_mxu2_divs_d CODE_FOR_divv2di3
++#define CODE_FOR_mxu2_divu_b CODE_FOR_udivv16qi3
++#define CODE_FOR_mxu2_divu_h CODE_FOR_udivv8hi3
++#define CODE_FOR_mxu2_divu_w CODE_FOR_udivv4si3
++#define CODE_FOR_mxu2_divu_d CODE_FOR_udivv2di3
++#define CODE_FOR_mxu2_mods_b CODE_FOR_modv16qi3
++#define CODE_FOR_mxu2_mods_h CODE_FOR_modv8hi3
++#define CODE_FOR_mxu2_mods_w CODE_FOR_modv4si3
++#define CODE_FOR_mxu2_mods_d CODE_FOR_modv2di3
++#define CODE_FOR_mxu2_modu_b CODE_FOR_umodv16qi3
++#define CODE_FOR_mxu2_modu_h CODE_FOR_umodv8hi3
++#define CODE_FOR_mxu2_modu_w CODE_FOR_umodv4si3
++#define CODE_FOR_mxu2_modu_d CODE_FOR_umodv2di3
++#define CODE_FOR_mxu2_mul_b CODE_FOR_mulv16qi3
++#define CODE_FOR_mxu2_mul_h CODE_FOR_mulv8hi3
++#define CODE_FOR_mxu2_mul_w CODE_FOR_mulv4si3
++#define CODE_FOR_mxu2_mul_d CODE_FOR_mulv2di3
 +#define CODE_FOR_mxu2_li_b CODE_FOR_mxu2_liv16qi
 +#define CODE_FOR_mxu2_li_h CODE_FOR_mxu2_liv8hi
 +#define CODE_FOR_mxu2_li_w CODE_FOR_mxu2_liv4si
 +#define CODE_FOR_mxu2_li_d CODE_FOR_mxu2_liv2di
-+#define CODE_FOR_mxu2_andv CODE_FOR_mxu2_andv16qi3
-+#define CODE_FOR_mxu2_orv CODE_FOR_mxu2_iorv16qi3
-+#define CODE_FOR_mxu2_xorv CODE_FOR_mxu2_xorv16qi3
++#define CODE_FOR_mxu2_andv CODE_FOR_andv16qi3
++#define CODE_FOR_mxu2_orv CODE_FOR_iorv16qi3
++#define CODE_FOR_mxu2_xorv CODE_FOR_xorv16qi3
 +#define CODE_FOR_mxu2_norv CODE_FOR_mxu2_norv_b
 +#define CODE_FOR_mxu2_bselv CODE_FOR_mxu2_bselv_b
-+#define CODE_FOR_mxu2_fadd_w CODE_FOR_mxu2_addv4sf3
-+#define CODE_FOR_mxu2_fadd_d CODE_FOR_mxu2_addv2df3
-+#define CODE_FOR_mxu2_fsub_w CODE_FOR_mxu2_subv4sf3
-+#define CODE_FOR_mxu2_fsub_d CODE_FOR_mxu2_subv2df3
-+#define CODE_FOR_mxu2_fmul_w CODE_FOR_mxu2_mulv4sf3
-+#define CODE_FOR_mxu2_fmul_d CODE_FOR_mxu2_mulv2df3
-+#define CODE_FOR_mxu2_fdiv_w CODE_FOR_mxu2_divv4sf3
-+#define CODE_FOR_mxu2_fdiv_d CODE_FOR_mxu2_divv2df3
-+#define CODE_FOR_mxu2_fsqrt_w CODE_FOR_mxu2_sqrtv4sf2
-+#define CODE_FOR_mxu2_fsqrt_d CODE_FOR_mxu2_sqrtv2df2
++#define CODE_FOR_mxu2_fadd_w CODE_FOR_addv4sf3
++#define CODE_FOR_mxu2_fadd_d CODE_FOR_addv2df3
++#define CODE_FOR_mxu2_fsub_w CODE_FOR_subv4sf3
++#define CODE_FOR_mxu2_fsub_d CODE_FOR_subv2df3
++#define CODE_FOR_mxu2_fmul_w CODE_FOR_mulv4sf3
++#define CODE_FOR_mxu2_fmul_d CODE_FOR_mulv2df3
++#define CODE_FOR_mxu2_fdiv_w CODE_FOR_divv4sf3
++#define CODE_FOR_mxu2_fdiv_d CODE_FOR_divv2df3
++#define CODE_FOR_mxu2_fsqrt_w CODE_FOR_sqrtv4sf2
++#define CODE_FOR_mxu2_fsqrt_d CODE_FOR_sqrtv2df2
 +#define CODE_FOR_mxu2_bnez1q CODE_FOR_mxu2_bnez1q_b
 +#define CODE_FOR_mxu2_beqz1q CODE_FOR_mxu2_beqz1q_b
 +#define CODE_FOR_mxu2_lu1qx CODE_FOR_mxu2_lu1qx_b
@@ -920,23 +1008,23 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +#define CODE_FOR_mxu2_sa1q CODE_FOR_mxu2_sa1q_b
 +#define CODE_FOR_mxu2_shufv CODE_FOR_mxu2_shufv_b
 +
-+#define CODE_FOR_mxu2_fmax_w CODE_FOR_mxu2_smaxv4sf3
-+#define CODE_FOR_mxu2_fmax_d CODE_FOR_mxu2_smaxv2df3
-+#define CODE_FOR_mxu2_fmin_w CODE_FOR_mxu2_sminv4sf3
-+#define CODE_FOR_mxu2_fmin_d CODE_FOR_mxu2_sminv2df3
++#define CODE_FOR_mxu2_fmax_w CODE_FOR_smaxv4sf3
++#define CODE_FOR_mxu2_fmax_d CODE_FOR_smaxv2df3
++#define CODE_FOR_mxu2_fmin_w CODE_FOR_sminv4sf3
++#define CODE_FOR_mxu2_fmin_d CODE_FOR_sminv2df3
 +
-+#define CODE_FOR_mxu2_slli_b CODE_FOR_mxu2_vashlv16qi3
-+#define CODE_FOR_mxu2_slli_h CODE_FOR_mxu2_vashlv8hi3
-+#define CODE_FOR_mxu2_slli_w CODE_FOR_mxu2_vashlv4si3
-+#define CODE_FOR_mxu2_slli_d CODE_FOR_mxu2_vashlv2di3
-+#define CODE_FOR_mxu2_srai_b CODE_FOR_mxu2_vashrv16qi3
-+#define CODE_FOR_mxu2_srai_h CODE_FOR_mxu2_vashrv8hi3
-+#define CODE_FOR_mxu2_srai_w CODE_FOR_mxu2_vashrv4si3
-+#define CODE_FOR_mxu2_srai_d CODE_FOR_mxu2_vashrv2di3
-+#define CODE_FOR_mxu2_srli_b CODE_FOR_mxu2_vlshrv16qi3
-+#define CODE_FOR_mxu2_srli_h CODE_FOR_mxu2_vlshrv8hi3
-+#define CODE_FOR_mxu2_srli_w CODE_FOR_mxu2_vlshrv4si3
-+#define CODE_FOR_mxu2_srli_d CODE_FOR_mxu2_vlshrv2di3
++#define CODE_FOR_mxu2_slli_b CODE_FOR_vashlv16qi3
++#define CODE_FOR_mxu2_slli_h CODE_FOR_vashlv8hi3
++#define CODE_FOR_mxu2_slli_w CODE_FOR_vashlv4si3
++#define CODE_FOR_mxu2_slli_d CODE_FOR_vashlv2di3
++#define CODE_FOR_mxu2_srai_b CODE_FOR_vashrv16qi3
++#define CODE_FOR_mxu2_srai_h CODE_FOR_vashrv8hi3
++#define CODE_FOR_mxu2_srai_w CODE_FOR_vashrv4si3
++#define CODE_FOR_mxu2_srai_d CODE_FOR_vashrv2di3
++#define CODE_FOR_mxu2_srli_b CODE_FOR_vlshrv16qi3
++#define CODE_FOR_mxu2_srli_h CODE_FOR_vlshrv8hi3
++#define CODE_FOR_mxu2_srli_w CODE_FOR_vlshrv4si3
++#define CODE_FOR_mxu2_srli_d CODE_FOR_vlshrv2di3
 +
 +/* Built-in functions for Ingenic MXU2.	 */
 +/* branch */
@@ -1284,8 +1372,8 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +MXU2_BUILTIN (insfcpu_h, MIPS_V8HI_FTYPE_V8HI_UQI_SI),
 +MXU2_BUILTIN (insfcpu_w, MIPS_V4SI_FTYPE_V4SI_UQI_SI),
 +MXU2_BUILTIN (insfcpu_d, MIPS_V2DI_FTYPE_V2DI_UQI_DI),
-+/* MXU2_BUILTIN (insffpu_w, MIPS_V4SF_FTYPE_V4SF_UQI_SF), */
-+/* MXU2_BUILTIN (insffpu_d, MIPS_V2DF_FTYPE_V2DF_UQI_DF), */
++MXU2_BUILTIN (insffpu_w, MIPS_V4SF_FTYPE_V4SF_UQI_SF),
++MXU2_BUILTIN (insffpu_d, MIPS_V2DF_FTYPE_V2DF_UQI_DF),
 +MXU2_BUILTIN (insfmxu_b, MIPS_V16QI_FTYPE_V16QI_UQI_V16QI),
 +MXU2_BUILTIN (insfmxu_h, MIPS_V8HI_FTYPE_V8HI_UQI_V8HI),
 +MXU2_BUILTIN (insfmxu_w, MIPS_V4SI_FTYPE_V4SI_UQI_V4SI),
@@ -1312,10 +1400,10 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +MXU2_BUILTIN (mfcpu_h, MIPS_V8HI_FTYPE_SI),
 +MXU2_BUILTIN (mfcpu_w, MIPS_V4SI_FTYPE_SI),
 +MXU2_BUILTIN (mfcpu_d, MIPS_V2DI_FTYPE_DI),
-+/* MXU2_BUILTIN (mtfpu_w, MIPS_SF_FTYPE_V4SF_UQI), */
-+/* MXU2_BUILTIN (mtfpu_d, MIPS_DF_FTYPE_V2DF_UQI), */
-+/* MXU2_BUILTIN (mffpu_w, MIPS_V4SF_FTYPE_SF), */
-+/* MXU2_BUILTIN (mffpu_d, MIPS_V2DF_FTYPE_DF), */
++MXU2_BUILTIN (mtfpu_w, MIPS_SF_FTYPE_V4SF_UQI),
++MXU2_BUILTIN (mtfpu_d, MIPS_DF_FTYPE_V2DF_UQI),
++MXU2_BUILTIN (mffpu_w, MIPS_V4SF_FTYPE_SF),
++MXU2_BUILTIN (mffpu_d, MIPS_V2DF_FTYPE_DF),
 +MXU2_NO_TARGET_BUILTIN (ctcmxu, MIPS_VOID_FTYPE_UQI_SI),
 +MXU2_BUILTIN (cfcmxu, MIPS_SI_FTYPE_UQI),
 +MXU2_BUILTIN (lu1q , MIPS_V16QI_FTYPE_CVPOINTER_SI),
@@ -1534,7 +1622,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +;; These enable C vector operations (a+b, a-b, etc.) and builtins
 +;; that map through CODE_FOR_addv4si3, etc.
 +
-+(define_insn "mxu2_add<mode>3"
++(define_insn "add<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1542,7 +1630,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "add<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_sub<mode>3"
++(define_insn "sub<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(minus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1550,7 +1638,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "sub<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_mul<mode>3"
++(define_insn "mul<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(mult:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1558,7 +1646,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "mul<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_div<mode>3"
++(define_insn "div<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(div:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1566,7 +1654,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "divs<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_udiv<mode>3"
++(define_insn "udiv<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(udiv:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1574,7 +1662,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "divu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_mod<mode>3"
++(define_insn "mod<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(mod:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1582,7 +1670,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "mods<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_umod<mode>3"
++(define_insn "umod<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(umod:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1590,7 +1678,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "modu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_and<mode>3"
++(define_insn "and<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(and:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1598,7 +1686,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "andv\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_ior<mode>3"
++(define_insn "ior<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ior:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1606,7 +1694,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "orv\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_xor<mode>3"
++(define_insn "xor<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(xor:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		   (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1614,21 +1702,21 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "xorv\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_one_cmpl<mode>2"
++(define_insn "one_cmpl<mode>2"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(not:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")))]
 +  "ISA_HAS_MXU2"
 +  "norv\t%w0,%w1,%w1"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_neg<mode>2"
++(define_insn "neg<mode>2"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(neg:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")))]
 +  "ISA_HAS_MXU2"
 +  "sub<mxu2fmt>\t%w0,%w0,%w1"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_vashl<mode>3"
++(define_insn "vashl<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ashift:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		      (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1636,7 +1724,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "sll<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_vashr<mode>3"
++(define_insn "vashr<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ashiftrt:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +			(match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1644,7 +1732,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "sra<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_vlshr<mode>3"
++(define_insn "vlshr<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(lshiftrt:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +			(match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1652,7 +1740,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "srl<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_smax<mode>3"
++(define_insn "smax<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(smax:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1660,7 +1748,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "maxs<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_smin<mode>3"
++(define_insn "smin<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(smin:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		    (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1668,7 +1756,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "mins<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_umax<mode>3"
++(define_insn "umax<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(umax:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1676,7 +1764,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "maxu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_umin<mode>3"
++(define_insn "umin<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(umin:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		     (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1684,7 +1772,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "minu<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_ssadd<mode>3"
++(define_insn "ssadd<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(ss_plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		       (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1692,7 +1780,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "addss<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_usadd<mode>3"
++(define_insn "usadd<mode>3"
 +  [(set (match_operand:IMXU2 0 "register_operand" "=q")
 +	(us_plus:IMXU2 (match_operand:IMXU2 1 "register_operand" "q")
 +		       (match_operand:IMXU2 2 "register_operand" "q")))]
@@ -1701,7 +1789,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  [(set_attr "mode" "TI")])
 +
 +;; Float operations
-+(define_insn "mxu2_add<mode>3"
++(define_insn "add<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(plus:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1709,7 +1797,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "fadd<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_sub<mode>3"
++(define_insn "sub<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(minus:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		     (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1717,7 +1805,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "fsub<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_mul<mode>3"
++(define_insn "mul<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(mult:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1725,7 +1813,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "fmul<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_div<mode>3"
++(define_insn "div<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(div:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		   (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1733,14 +1821,14 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "fdiv<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_sqrt<mode>2"
++(define_insn "sqrt<mode>2"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(sqrt:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")))]
 +  "ISA_HAS_MXU2"
 +  "fsqrt<mxu2fmt>\t%w0,%w1"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_smax<mode>3"
++(define_insn "smax<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(smax:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -1748,7 +1836,7 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +  "fmax<mxu2fmt>\t%w0,%w1,%w2"
 +  [(set_attr "mode" "TI")])
 +
-+(define_insn "mxu2_smin<mode>3"
++(define_insn "smin<mode>3"
 +  [(set (match_operand:FMXU2 0 "register_operand" "=q")
 +	(smin:FMXU2 (match_operand:FMXU2 1 "register_operand" "q")
 +		    (match_operand:FMXU2 2 "register_operand" "q")))]
@@ -3601,6 +3689,19 @@ on XBurst1 (T20/T21/T23/T31) and XBurst2 (T40/T41) processors.
 +#endif /* __clang__ */
 +#endif /* defined(__mips_mxu2) */
 +#endif /* _MXU2_H */
+diff: vanilla/config.gcc: No such file or directory
+diff: patched/config.gcc: No such file or directory
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -485,7 +485,7 @@
+ mips*-*-*)
+ 	cpu_type=mips
+ 	d_target_objs="mips-d.o"
+-	extra_headers="loongson.h loongson-mmiintrin.h msa.h"
++	extra_headers="loongson.h loongson-mmiintrin.h msa.h mxu2.h"
+ 	extra_objs="frame-header-opt.o"
+ 	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
+ 	;;
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
 @@ -485,7 +485,7 @@
