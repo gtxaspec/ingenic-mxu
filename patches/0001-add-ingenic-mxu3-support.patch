@@ -1,0 +1,36 @@
+--- a/include/opcode/mips.h
++++ b/include/opcode/mips.h
+@@ -233,7 +233,19 @@
+   OP_REG_MSA,
+ 
+   /* MSA control registers $0-$31.  */
+-  OP_REG_MSA_CTRL
++  OP_REG_MSA_CTRL,
++
++  /* MXU3 (XBurst2 SIMD512) vector pair registers $vr0-$vr31.  */
++  OP_REG_MXU512,
++
++  /* MXU3 vector scalar registers $vsr0-$vsr3.  */
++  OP_REG_MXU512_VSR,
++
++  /* MXU3 vector wide registers $vwr0-$vwr31.  */
++  OP_REG_MXU512_VWR,
++
++  /* MXU3 multiplier control & status registers $mcs0-$mcs3.  */
++  OP_REG_MXU512_MCS
+ };
+ 
+ /* Base class for all operands.  */
+@@ -1066,6 +1078,12 @@
+    only valid for the R6 ISA.  */
+ #define ASE_EVA_R6		0x02000000
+ 
++/* Ingenic XBurst2 MXU3 SIMD512 ASE.  */
++#define ASE_MXU512		0x08000000
++
++/* Ingenic XBurst2 MXU3.1 SIMD512 ASE additions.  */
++#define ASE_MXU512_1		0x10000000
++
+ /* MIPS ISA defines, use instead of hardcoding ISA level.  */
+ 
+ #define       ISA_UNKNOWN     0               /* Gas internal use.  */
