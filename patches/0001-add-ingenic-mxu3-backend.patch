@@ -1,0 +1,63 @@
+--- a/gcc/config/mips/mips.opt
++++ b/gcc/config/mips/mips.opt
+@@ -332,6 +332,14 @@
+ Target Var(TARGET_MXU2)
+ Use Ingenic MXU2 128-bit SIMD instructions.
+ 
++mmxu3
++Target Var(TARGET_MXU3)
++Use Ingenic MXU3 512-bit SIMD instructions.
++
++mmxu3.1
++Target Var(TARGET_MXU3_1)
++Use Ingenic MXU3.1 SIMD instructions (T41 only).
++
+ mmt
+ Target Var(TARGET_MT)
+ Allow the use of MT instructions.
+--- a/gcc/config/mips/mips.h
++++ b/gcc/config/mips/mips.h
+@@ -525,6 +525,15 @@
+ 	  builtin_define ("__mips_mxu2_width=128");		\
+ 	}							\
+ 									\
++      if (TARGET_MXU3)						\
++	{							\
++	  builtin_define ("__mips_mxu3");			\
++	  builtin_define ("__mips_mxu3_width=512");		\
++	}							\
++									\
++      if (TARGET_MXU3_1)						\
++	builtin_define ("__mips_mxu3_1");			\
++									\
+       MIPS_CPP_SET_PROCESSOR ("_MIPS_ARCH", mips_arch_info);		\
+       MIPS_CPP_SET_PROCESSOR ("_MIPS_TUNE", mips_tune_info);		\
+ 									\
+@@ -1323,6 +1332,10 @@
+ 
+ #define ISA_HAS_MXU2		(TARGET_MXU2 && !TARGET_MIPS16)
+ 
++/* MXU3 = 512-bit SIMD (XBurst2 only). MXU3.1 implies MXU3.  */
++#define ISA_HAS_MXU3		(TARGET_MXU3 && !TARGET_MIPS16)
++#define ISA_HAS_MXU3_1		(TARGET_MXU3_1 && ISA_HAS_MXU3)
++
+ /* The MIPS16e V2 instructions are available.  */
+ #define ISA_HAS_MIPS16E2       (TARGET_MIPS16 && TARGET_MIPS16E2 \
+ 				&& !TARGET_64BIT)
+@@ -2493,6 +2506,16 @@
+    && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT		\
+        || GET_MODE_CLASS (MODE) == MODE_VECTOR_FLOAT))
+ 
++/* MXU3 vector modes are 512-bit (64 bytes).  Each VPR holds 4 quarters of
++   128-bit data; native operations work on one quarter at a time.  */
++#define UNITS_PER_MXU3_REG 64
++
++#define MXU3_SUPPORTED_MODE_P(MODE)			\
++  (ISA_HAS_MXU3					\
++   && GET_MODE_SIZE (MODE) == UNITS_PER_MXU3_REG	\
++   && (GET_MODE_CLASS (MODE) == MODE_VECTOR_INT		\
++       || GET_MODE_CLASS (MODE) == MODE_VECTOR_FLOAT))
++
+ /* Temporary register that is used when restoring $gp after a call.  $4 and $5
+    are used for returning complex double values in soft-float code, so $6 is the
+    first suitable candidate for TARGET_MIPS16.  For !TARGET_MIPS16 we can use
