@@ -27,5 +27,7 @@ all_intrinsics_v2.c
 # Patch working directories (full vendor source copies)
 patches/gcc-work/
 patches/binutils-work/
+patches/gcc-mxu3-work/
+patches/binutils-mxu3-work/
 patches/binutils-split/stages/
 patches/gcc-split/*.body
