@@ -1,29 +1,29 @@
 --- a/include/opcode/mips.h
 +++ b/include/opcode/mips.h
-@@ -233,7 +233,19 @@
-   OP_REG_MSA,
+@@ -239,7 +239,19 @@
+   OP_REG_MXU128,
  
-   /* MSA control registers $0-$31.  */
--  OP_REG_MSA_CTRL
-+  OP_REG_MSA_CTRL,
+   /* Ingenic MXU2 control registers.  */
+-  OP_REG_MXU128_CR
++  OP_REG_MXU128_CR,
 +
-+  /* MXU3 (XBurst2 SIMD512) vector pair registers $vr0-$vr31.  */
++  /* Ingenic MXU3 vector pair registers $vr0-$vr31 (512-bit).  */
 +  OP_REG_MXU512,
 +
-+  /* MXU3 vector scalar registers $vsr0-$vsr3.  */
++  /* Ingenic MXU3 vector scalar registers $vsr0-$vsr3.  */
 +  OP_REG_MXU512_VSR,
 +
-+  /* MXU3 vector wide registers $vwr0-$vwr31.  */
++  /* Ingenic MXU3 vector wide registers $vwr0-$vwr31.  */
 +  OP_REG_MXU512_VWR,
 +
-+  /* MXU3 multiplier control & status registers $mcs0-$mcs3.  */
++  /* Ingenic MXU3 multiplier control & status registers $mcs0-$mcs3.  */
 +  OP_REG_MXU512_MCS
  };
  
  /* Base class for all operands.  */
-@@ -1066,6 +1078,12 @@
-    only valid for the R6 ISA.  */
- #define ASE_EVA_R6		0x02000000
+@@ -1074,6 +1086,12 @@
+ /* Ingenic MXU2 128-bit SIMD (XBurst1/XBurst2 COP2).  */
+ #define ASE_MXU128		0x04000000
  
 +/* Ingenic XBurst2 MXU3 SIMD512 ASE.  */
 +#define ASE_MXU512		0x08000000
@@ -34,3 +34,609 @@
  /* MIPS ISA defines, use instead of hardcoding ISA level.  */
  
  #define       ISA_UNKNOWN     0               /* Gas internal use.  */
+--- a/opcodes/mips-opc.c
++++ b/opcodes/mips-opc.c
+@@ -56,6 +56,74 @@
+ 	case 'y': PREV_CHECK (5, 21, false, true, false, false);
+ 	case 'A': PCREL (19, 0, true, 2, 2, false, false);
+ 	case 'B': PCREL (18, 0, true, 3, 3, false, false);
++
++	/* Ingenic MXU3 register operands.  VSR uses '-c' instead of vendor's
++	   '-m' (which conflicts with MIPS16e2 SAVE_RESTORE_LIST).  */
++	case 'c':  REG (2, 6,  MXU512_VSR);
++	case 'e':  REG (5, 16, MXU512);
++	case 'f':  REG (5, 11, MXU512);
++	case 'g':  REG (5, 6,  MXU512);
++	case 'h':  REG (5, 11, MXU512_VWR);
++	case 'i':  REG (5, 6,  MXU512_VWR);
++	case 'j':  REG (5, 11, MXU512_MCS);
++	case 'n':  REG (2, 11, MXU512_VSR);
++
++	/* Ingenic MXU3 immediate operands.  */
++	case 'W':  INT_ADJ (5,  16, 0xf, 2, false); /* (-16 .. 15) << 2 */
++	case 'D':  INT_ADJ (5,  16, 0xf, 3, false); /* (-16 .. 15) << 3 */
++	case 'Q':  INT_ADJ (5,  16, 0xf, 4, false); /* (-16 .. 15) << 4 */
++	case 'O':  INT_ADJ (5,  16, 0xf, 5, false); /* (-16 .. 15) << 5 */
++	case '@':  SPECIAL (1, 10, IMM0_INDEX);
++	case '0':  SPECIAL (1, 16, IMM0_INDEX);
++	case '1':  SPECIAL (2, 14, IMM_INDEX);
++	case '2':  SPECIAL (3, 13, IMM_INDEX);
++	case '3':  SPECIAL (4, 12, IMM_INDEX);
++	case '4':  SPECIAL (5, 11, IMM_INDEX);
++	case '5':  SPECIAL (2, 9,  IMM_INDEX);
++	case '6':  SPECIAL (3, 8,  IMM_INDEX);
++	case '7':  SPECIAL (4, 7,  IMM_INDEX);
++	case '8':  SPECIAL (5, 6,  IMM_INDEX);
++	case '9':  UINT (1, 15);
++	case '<':  SPECIAL (4, 13, IMM_INDEX);
++	case '>':  SPECIAL (3, 14, IMM_INDEX);
++	case '?':  SPECIAL (2, 15, IMM_INDEX);
++	case '#':  UINT (1, 9);
++	case '$':  UINT (1, 12);
++	case '%':  UINT (2, 12);
++	case '&':  UINT (3, 12);
++	case '*':  UINT (4, 12);
++	case '^':  UINT (1, 13);
++	case '!':  UINT (2, 13);
++	case '|':  UINT (3, 13);
++	case '(':  UINT (1, 7);
++	case ')':  UINT (2, 7);
++	case '~':  UINT (3, 7);
++	case ':':  SINT (8, 0);
++	case 'X':  UINT (1, 14);
++	case 'Y':  UINT (2, 14);
++	case 'Z':  UINT (1, 8);
++	case 'V':  UINT (2, 8);
++	case 'M':  UINT (10, 6);
++	case 'N':  UINT (10, 11);
++	case 'L':  UINT (15, 6);
++	case 'U':  UINT (16, 0);
++	case 'S':  SINT (16, 0);
++	case 'T':  UINT (8, 11);
++	case 'R':  UINT (4, 21);
++	case 'P':  UINT (1, 21);
++	case 'I':  UINT (2, 21);
++	case 'K':  UINT (5, 11);
++	case 'E':  UINT (8, 0);
++	case 'C':  SPECIAL (1, 21, IMM_INDEX);
++	case 'F':  SPECIAL (2, 21, IMM_INDEX);
++	case 'G':  SPECIAL (3, 21, IMM_INDEX);
++	case 'H':  SPECIAL (4, 21, IMM_INDEX);
++	case 'J':  SPECIAL (6, 16, IMM_INDEX);
++	case 'o':  SPECIAL (4, 0,  IMM_INDEX);
++	case 'p':  SPECIAL (1, 4,  IMM_INDEX);
++	case 'q':  SPECIAL (2, 3,  IMM_INDEX);
++	case 'r':  SPECIAL (3, 2,  IMM_INDEX);
++	case 'z':  SPECIAL (4, 1,  IMM_INDEX);
+ 	}
+       break;
+ 
+@@ -451,6 +519,10 @@
+ /* Ingenic MXU2 128-bit SIMD (XBurst1/XBurst2 COP2).  */
+ #define MXU128	ASE_MXU128
+ 
++/* Ingenic MXU3 512-bit SIMD (XBurst2 COP2).  */
++#define MXU512		ASE_MXU512
++#define MXU512_1	ASE_MXU512_1
++
+ /* The order of overloaded instructions matters.  Label arguments and
+    register arguments look the same. Instructions that can have either
+    for arguments must apear in the correct order in this table for the
+@@ -3806,6 +3878,517 @@
+ {"mffpud",		"=h,S", 	0x4bc1003f, 0xffff003f,	WR_1|RD_2,	        0,		0,		MXU128,	0 },
+ {"ctcmxu",		"=x,d", 	0x4bc1003c, 0xffff003f,	RD_2|CM,	        0,		0,		MXU128,	0 },
+ {"cfcmxu",		"d,=x", 	0x4bc1003d, 0xffff003f,	WR_1|CM,	        0,		0,		MXU128,	0 },
++/* Begin Ingenic MXU R3 (MXU3 / MXU3.1) Instructions. */
++/* TODO: opcodes using MULTI operand encodings (-:, -E, -M, -S, -U) deferred. */
++/* Ingenic MXU R3 Instructions*/
++/* Branch.  */
++{"bnezb",    "-e,=g",    0x4a600014,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"bnezh",    "-e,=g",    0x4a600015,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"bnezw",    "-e,=g",    0x4a600016,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"bnezv",    "-e,=g",    0x4a600017,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"beqzb",    "-e,=g",    0x4a600010,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"beqzh",    "-e,=g",    0x4a600011,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"beqzw",    "-e,=g",    0x4a600012,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++{"beqzv",    "-e,=g",    0x4a600013,  0xffe0003f,  RD_1|CBD,       0,  0,  MXU512 | MXU512_1,  0 },
++/* Compare.  */
++{"ceqb",     "-g,-e,-f", 0x4a000028,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"ceqh",     "-g,-e,-f", 0x4a000029,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"ceqw",     "-g,-e,-f", 0x4a00002a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"ceqzb",    "-g,-e",    0x4a000020,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ceqzh",    "-g,-e",    0x4a000021,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ceqzw",    "-g,-e",    0x4a000022,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"clesb",    "-g,-e,-f", 0x4a00003c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"clesh",    "-g,-e,-f", 0x4a00003d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"clesw",    "-g,-e,-f", 0x4a00003e,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cleub",    "-g,-e,-f", 0x4a000038,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cleuh",    "-g,-e,-f", 0x4a000039,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cleuw",    "-g,-e,-f", 0x4a00003a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"clezb",    "-g,-e",    0x4a00002c,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"clezh",    "-g,-e",    0x4a00002d,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"clezw",    "-g,-e",    0x4a00002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"cltsb",    "-g,-e,-f", 0x4a000034,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cltsh",    "-g,-e,-f", 0x4a000035,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cltsw",    "-g,-e,-f", 0x4a000036,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cltub",    "-g,-e,-f", 0x4a000030,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cltuh",    "-g,-e,-f", 0x4a000031,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cltuw",    "-g,-e,-f", 0x4a000032,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"cltzb",    "-g,-e",    0x4a000024,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"cltzh",    "-g,-e",    0x4a000025,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"cltzw",    "-g,-e",    0x4a000026,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++/* Integer Arithmetic.  */
++{"addb",     "-g,-e,-f", 0x4a800000,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"addh",     "-g,-e,-f", 0x4a800001,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"addw",     "-g,-e,-f", 0x4a800002,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"addrw",    "-i,-h",    0x4b600034,  0xffff003f,  WR_1|RD_1|RD_2, 0,  0,  MXU512 | MXU512_1,  0 },
++{"subb",     "-g,-e,-f", 0x4a800008,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"subh",     "-g,-e,-f", 0x4a800009,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"subw",     "-g,-e,-f", 0x4a80000a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"waddsbl",  "-g,-e,-f", 0x4a800024,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"waddsbh",  "-g,-e,-f", 0x4a800026,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"waddshl",  "-g,-e,-f", 0x4a800025,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"waddshh",  "-g,-e,-f", 0x4a800027,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"waddubl",  "-g,-e,-f", 0x4a800020,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"waddubh",  "-g,-e,-f", 0x4a800022,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wadduhl",  "-g,-e,-f", 0x4a800021,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wadduhh",  "-g,-e,-f", 0x4a800023,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsubsbl",  "-g,-e,-f", 0x4a80002c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsubsbh",  "-g,-e,-f", 0x4a80002e,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsubshl",  "-g,-e,-f", 0x4a80002d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsubshh",  "-g,-e,-f", 0x4a80002f,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsububl",  "-g,-e,-f", 0x4a800028,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsububh",  "-g,-e,-f", 0x4a80002a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsubuhl",  "-g,-e,-f", 0x4a800029,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsubuhh",  "-g,-e,-f", 0x4a80002b,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++/* S<lseg>SUM<fmt>.  */
++{"sr1sum2bi", "-m+&,-e",      0x4ae00000,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sum2bi", "-m+>,-e",      0x4ae00800,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sum2bi", "-m+<,-e",      0x4ae01000,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sum2bi", "-m+,,-e",      0x4ae01800,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sum2bi","-m-o,-e",      0x4ae02000,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1sum4bi", "-m+&,-e",      0x4ae00100,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sum4bi", "-m+>,-e",      0x4ae00900,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sum4bi", "-m+<,-e",      0x4ae01100,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sum4bi", "-m+,,-e",      0x4ae01900,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sum4bi","-m-o,-e",      0x4ae02100,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1sumub",  "-m+&,-e",      0x4ae00200,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sumub",  "-m+>,-e",      0x4ae00a00,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sumub",  "-m+<,-e",      0x4ae01200,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sumub",  "-m+,,-e",      0x4ae01a00,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sumub", "-m-o,-e",      0x4ae02200,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1sumuh",  "-m+&,-e",      0x4ae00300,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sumuh",  "-m+>,-e",      0x4ae00b00,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sumuh",  "-m+<,-e",      0x4ae01300,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sumuh",  "-m+,,-e",      0x4ae01b00,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sumuh", "-m-o,-e",      0x4ae02300,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++/* S<lseg>SUMS<fmt>.  */
++{"sr1sumsb",  "-m+&,-e",      0x4ae00400,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sumsb",  "-m+>,-e",      0x4ae00c00,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sumsb",  "-m+<,-e",      0x4ae01400,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sumsb",  "-m+,,-e",      0x4ae01c00,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sumsb", "-m-o,-e",      0x4ae02400,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1sumsh",  "-m+&,-e",      0x4ae00500,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sumsh",  "-m+>,-e",      0x4ae00d00,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sumsh",  "-m+<,-e",      0x4ae01500,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sumsh",  "-m+,,-e",      0x4ae01d00,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sumsh", "-m-o,-e",      0x4ae02500,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++/* S<lseg>SUMW.  */
++{"sr1sumw",   "-m+&,-e",      0x4ae00600,  0xffe0ff3f,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2sumw",   "-m+>,-e",      0x4ae00e00,  0xffe0ff3e,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4sumw",   "-m+<,-e",      0x4ae01600,  0xffe0ff3c,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8sumw",   "-m+,,-e",      0x4ae01e00,  0xffe0ff38,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16sumw",  "-m-o,-e",      0x4ae02600,  0xffe0ff30,  WR_1|RD_1|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"absb",      "-g,-e",        0x4a80000c,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"absh",      "-g,-e",        0x4a80000d,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"absw",      "-g,-e",        0x4a80000e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"mulb",      "-g,-e,-f",     0x4a600020,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"mulh",      "-g,-e,-f",     0x4a600021,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"mulw",      "-g,-e,-f",     0x4a600022,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smulbe",    "-g,-e,-f",     0x4a60002c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smulbo",    "-g,-e,-f",     0x4a60002e,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smulhe",    "-g,-e,-f",     0x4a60002d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smulho",    "-g,-e,-f",     0x4a60002f,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"umulbe",    "-g,-e,-f",     0x4a600028,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"umulbo",    "-g,-e,-f",     0x4a60002a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"umulhe",    "-g,-e,-f",     0x4a600029,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"umulho",    "-g,-e,-f",     0x4a60002b,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmulbl",   "-g,-e,-f",     0x4b60002c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmulbh",   "-g,-e,-f",     0x4b60002e,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmulhl",   "-g,-e,-f",     0x4b60002d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmulhh",   "-g,-e,-f",     0x4b60002f,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wumulbl",   "-g,-e,-f",     0x4b600028,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wumulbh",   "-g,-e,-f",     0x4b60002a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wumulhl",   "-g,-e,-f",     0x4b600029,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wumulhh",   "-g,-e,-f",     0x4b60002b,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"mlaw",      "-c,-e,-f",     0x4a600038,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"mlsw",      "-c,-e,-f",     0x4a60003c,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smlahe",    "-c,-e,-f",     0x4a600039,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smlaho",    "-c,-e,-f",     0x4a60003b,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smlshe",    "-c,-e,-f",     0x4a60003d,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"smlsho",    "-c,-e,-f",     0x4a60003f,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmlahl",   "-c,-e,-f",     0x4b600039,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmlahh",   "-c,-e,-f",     0x4b60003b,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmlshl",   "-c,-e,-f",     0x4b60003d,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"wsmlshh",   "-c,-e,-f",     0x4b60003f,  0xffe0073f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++/* SR<lseg>MAC<fmt>.  */
++{"sr1mac2bi", "-m+&,-e,-f=H", 0x4b800000,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2mac2bi", "-m-p,-e,-f-o", 0x4b800020,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4mac2bi", "-m-q,-e,-f+,", 0x4ba00000,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8mac2bi", "-m-r,-e,-f+<", 0x4ba00020,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16mac2bi","-m-z,-e,-f+>", 0x4bc00000,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1mac4bi", "-m+&,-e,-f=H", 0x4b800100,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2mac4bi", "-m-p,-e,-f-o", 0x4b800120,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4mac4bi", "-m-q,-e,-f+,", 0x4ba00100,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8mac4bi", "-m-r,-e,-f+<", 0x4ba00120,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16mac4bi","-m-z,-e,-f+>", 0x4bc00100,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1macuub", "-m+&,-e,-f=H", 0x4b800200,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2macuub", "-m-p,-e,-f-o", 0x4b800220,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4macuub", "-m-q,-e,-f+,", 0x4ba00200,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8macuub", "-m-r,-e,-f+<", 0x4ba00220,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16macuub","-m-z,-e,-f+>", 0x4bc00200,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++/* SR<lseg>MACSU<fmt>.  */
++{"sr1macsub", "-m+&,-e,-f=H", 0x4b800600,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2macsub", "-m-p,-e,-f-o", 0x4b800620,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4macsub", "-m-q,-e,-f+,", 0x4ba00600,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8macsub", "-m-r,-e,-f+<", 0x4ba00620,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16macsub","-m-z,-e,-f+>", 0x4bc00600,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++/* SR<lseg>MACS<fmt>.  */
++{"sr1macssb", "-m+&,-e,-f=H", 0x4b800400,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2macssb", "-m-p,-e,-f-o", 0x4b800420,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4macssb", "-m-q,-e,-f+,", 0x4ba00400,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8macssb", "-m-r,-e,-f+<", 0x4ba00420,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16macssb","-m-z,-e,-f+>", 0x4bc00400,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr1macssh", "-m+&,-e,-f=H", 0x4b800500,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr2macssh", "-m-p,-e,-f-o", 0x4b800520,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr4macssh", "-m-q,-e,-f+,", 0x4ba00500,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr8macssh", "-m-r,-e,-f+<", 0x4ba00520,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sr16macssh","-m-z,-e,-f+>", 0x4bc00500,  0xffe00720,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++/* S<lseg>MACUU<fmt>.  */
++{"s1macuub",  "-m+&,-e,-f",   0x4b800720,  0xffe0073f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s2macuub",  "-m=C,-e,-f",   0x4b800710,  0xffe0071f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s4macuub",  "-m=D,-e,-f",   0x4b800708,  0xffe0070f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s8macuub",  "-m=F,-e,-f",   0x4b800704,  0xffe00707,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s16macuub", "-m=G,-e,-f",   0x4b800702,  0xffe00703,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++/* S<lseg>MACSU<fmt>.  */
++{"s1macsub",  "-m+&,-e,-f",   0x4ba00720,  0xffe0073f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s2macsub",  "-m=C,-e,-f",   0x4ba00710,  0xffe0071f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s4macsub",  "-m=D,-e,-f",   0x4ba00708,  0xffe0070f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s8macsub",  "-m=F,-e,-f",   0x4ba00704,  0xffe00707,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s16macsub", "-m=G,-e,-f",   0x4ba00702,  0xffe00703,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++/* S<lseg>MACSS<fmt>.  */
++{"s1macssb",  "-m+&,-e,-f",   0x4bc00720,  0xffe0073f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s2macssb",  "-m=C,-e,-f",   0x4bc00710,  0xffe0071f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s4macssb",  "-m=D,-e,-f",   0x4bc00708,  0xffe0070f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s8macssb",  "-m=F,-e,-f",   0x4bc00704,  0xffe00707,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s16macssb", "-m=G,-e,-f",   0x4bc00702,  0xffe00703,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s1macssh",  "-m+&,-e,-f",   0x4be00720,  0xffe0073f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s2macssh",  "-m=C,-e,-f",   0x4be00710,  0xffe0071f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s4macssh",  "-m=D,-e,-f",   0x4be00708,  0xffe0070f,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s8macssh",  "-m=F,-e,-f",   0x4be00704,  0xffe00707,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"s16macssh", "-m=G,-e,-f",   0x4be00702,  0xffe00703,  WR_1|RD_1|RD_3|RD_4, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxab",    "-g,-e,-f", 0x4a000018,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxah",    "-g,-e,-f", 0x4a000019,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxaw",    "-g,-e,-f", 0x4a00001a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxsb",    "-g,-e,-f", 0x4a00001c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxsh",    "-g,-e,-f", 0x4a00001d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxsw",    "-g,-e,-f", 0x4a00001e,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxub",    "-g,-e,-f", 0x4a000008,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxuh",    "-g,-e,-f", 0x4a000009,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxuw",    "-g,-e,-f", 0x4a00000a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxu2bi",  "-g,-e,-f", 0x4a00000c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"maxu4bi",  "-g,-e,-f", 0x4a00000d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minab",    "-g,-e,-f", 0x4a000010,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minah",    "-g,-e,-f", 0x4a000011,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minaw",    "-g,-e,-f", 0x4a000012,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minsb",    "-g,-e,-f", 0x4a000014,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minsh",    "-g,-e,-f", 0x4a000015,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minsw",    "-g,-e,-f", 0x4a000016,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minub",    "-g,-e,-f", 0x4a000000,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minuh",    "-g,-e,-f", 0x4a000001,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minuw",    "-g,-e,-f", 0x4a000002,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minu2bi",  "-g,-e,-f", 0x4a000004,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"minu4bi",  "-g,-e,-f", 0x4a000005,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"satsshb",  "-g,-e",    0x7120002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsswb",  "-g,-e",    0x7140002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsswh",  "-g,-e",    0x71c0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsub2bi","-g,-e",    0x7200002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsub4bi","-g,-e",    0x7280002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuh2bi","-g,-e",    0x7220002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuh4bi","-g,-e",    0x72a0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuhb",  "-g,-e",    0x7320002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuw2bi","-g,-e",    0x7240002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuw4bi","-g,-e",    0x72c0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuwb",  "-g,-e",    0x7340002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satsuwh",  "-g,-e",    0x73c0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuub2bi","-g,-e",    0x7000002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuub4bi","-g,-e",    0x7020002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuuh2bi","-g,-e",    0x7040002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuuh4bi","-g,-e",    0x7060002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuuhb",  "-g,-e",    0x7080002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuuw4bi","-g,-e",    0x70a0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuuwb",  "-g,-e",    0x70c0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"satuuwh",  "-g,-e",    0x70e0002f,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"tocb",     "-c,-e",    0x4a600018,  0xffe0ff3f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"toch",     "-c,-e",    0x4a600019,  0xffe0ff3f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"tocw",     "-c,-e",    0x4a60001a,  0xffe0ff3f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++/* BitWise.  */
++{"andv",     "-g,-e,-f", 0x4a600002,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"andnv",    "-g,-e,-f", 0x4a600003,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"orv",      "-g,-e,-f", 0x4a600004,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"ornv",     "-g,-e,-f", 0x4a600005,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"xorv",     "-g,-e,-f", 0x4a600006,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"xornv",    "-g,-e,-f", 0x4a600007,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"bselv",    "-g,-e,-f", 0x4a60000e,  0xffe0003f,  WR_1|RD_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++/* Floating Point Arithmetic.  */
++{"faddw",    "-g,-e,-f", 0x4a800003,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fsubw",    "-g,-e,-f", 0x4a80000b,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fmulw",    "-g,-e,-f", 0x4a600023,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fcmulrw",  "-g,-e,-f", 0x4b600030,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fcmuliw",  "-g,-e,-f", 0x4b600032,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fcaddw",   "-g,-e,-f", 0x4a60003a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fxas1w",   "-g,-f"   , 0x4a60003e,  0xffff003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"fxas2w",   "-g,-f"   , 0x4a61003e,  0xffff003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"fxas4w",   "-g,-f"   , 0x4a62003e,  0xffff003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"fxas8w",   "-g,-f"   , 0x4a63003e,  0xffff003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"fmaxw",    "-g,-e,-f", 0x4a00001f,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fmaxaw",   "-g,-e,-f", 0x4a00001b,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fminw",    "-g,-e,-f", 0x4a000017,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fminaw",   "-g,-e,-f", 0x4a000013,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fclassw",  "-g,-e",    0x4900002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++/* Floating Point Compare.  */
++{"fceqw",    "-g,-e,-f", 0x4a00002b,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fclew",    "-g,-e,-f", 0x4a00003f,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fcltw",    "-g,-e,-f", 0x4a000037,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"fcorw",    "-g,-e,-f", 0x4a000033,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++/* Floating Point Conversion.  */
++{"ffsiw",    "-g,-e",    0x7040002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ffuiw",    "-g,-e",    0x7000002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ftsiw",    "-g,-e",    0x70e0002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ftuiw",    "-g,-e",    0x70a0002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"frintw",   "-g,-e",    0x7020002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ftruncsw", "-g,-e",    0x70c0002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"ftruncuw", "-g,-e",    0x7080002e,  0xffe0f83f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++/* Shift.  */
++{"sllb",     "-g,-e,-f", 0x4a200020,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sllh",     "-g,-e,-f", 0x4a200021,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sllw",     "-g,-e,-f", 0x4a200022,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sllib",    "-g,-e,-K", 0x4aa00020,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"sllih",    "-g,-e,-K", 0x4aa00021,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"slliw",    "-g,-e,-K", 0x4aa00022,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srab",     "-g,-e,-f", 0x4a200038,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srah",     "-g,-e,-f", 0x4a200039,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sraw",     "-g,-e,-f", 0x4a20003a,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"sraib",    "-g,-e,-K", 0x4aa00038,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"sraih",    "-g,-e,-K", 0x4aa00039,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"sraiw",    "-g,-e,-K", 0x4aa0003a,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srarb",    "-g,-e,-f", 0x4a20003c,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srarh",    "-g,-e,-f", 0x4a20003d,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srarw",    "-g,-e,-f", 0x4a20003e,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srarib",   "-g,-e,-K", 0x4aa0003c,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srarih",   "-g,-e,-K", 0x4aa0003d,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srariw",   "-g,-e,-K", 0x4aa0003e,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srlb",     "-g,-e,-f", 0x4a200030,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srlh",     "-g,-e,-f", 0x4a200031,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srlw",     "-g,-e,-f", 0x4a200032,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srlib",    "-g,-e,-K", 0x4aa00030,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srlih",    "-g,-e,-K", 0x4aa00031,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srliw",    "-g,-e,-K", 0x4aa00032,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srlrb",    "-g,-e,-f", 0x4a200034,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srlrh",    "-g,-e,-f", 0x4a200035,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srlrw",    "-g,-e,-f", 0x4a200036,  0xffe0003f,  WR_1|RD_2|RD_3, 0,  0,  MXU512 | MXU512_1,  0 },
++{"srlrib",   "-g,-e,-K", 0x4aa00034,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srlrih",   "-g,-e,-K", 0x4aa00035,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++{"srlriw",   "-g,-e,-K", 0x4aa00036,  0xffe0003f,  WR_1|RD_2,      0,  0,  MXU512 | MXU512_1,  0 },
++/* Element Shuffle/Permute.  */
++{"gt1bi",     "-g,-f",       0x71c40034,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt2bi",     "-g,-f",       0x71c50034,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt4bi",     "-g,-f",       0x71c60034,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gtb",       "-g,-f",       0x71c00034,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gth",       "-g,-f",       0x71c10034,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt2w",     "-g+w,-f,-P",   0x70000035,  0xffde003f,  WR_1|RD_3,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt4w",     "-g+v,-f,-I",   0x70040035,  0xff9c003f,  WR_1|RD_3,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt8w",     "-g+u,-f,%",    0x70080035,  0xff18003f,  WR_1|RD_3,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt2d",     "-g+w,-f,-P",   0x72020035,  0xffde003f,  WR_1|RD_3,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt4d",     "-g+v,-f,-I",   0x72040035,  0xff9c003f,  WR_1|RD_3,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gt2q",     "-g+w,-f,-P",   0x73020035,  0xffde003f,  WR_1|RD_3,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuwll",   "-g,-f,-P",    0x72000031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuwlh",   "-g,-f,-P",    0x72080031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuwhl",   "-g,-f,-P",    0x72100031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuwhh",   "-g,-f,-P",    0x72180031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extudll",   "-g,-f,-P",    0x72010031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extudlh",   "-g,-f,-P",    0x72090031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extudhl",   "-g,-f,-P",    0x72110031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extudhh",   "-g,-f,-P",    0x72190031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuqll",   "-g,-f,-P",    0x72020031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuqlh",   "-g,-f,-P",    0x720a0031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuqhl",   "-g,-f,-P",    0x72120031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuqhh",   "-g,-f,-P",    0x721a0031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuoll",   "-g,-f,-P",    0x72030031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuolh",   "-g,-f,-P",    0x720b0031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuohl",   "-g,-f,-P",    0x72130031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuohh",   "-g,-f,-P",    0x721b0031,  0xffdf003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu1bil",  "-g,-f",       0x71a40031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu2bil",  "-g,-f",       0x71a50031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu4bil",  "-g,-f",       0x71a60031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extubl",    "-g,-f",       0x71a00031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuhl",    "-g,-f",       0x71a10031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu1bih",  "-g,-f",       0x71ac0031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu2bih",  "-g,-f",       0x71ad0031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu4bih",  "-g,-f",       0x71ae0031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extubh",    "-g,-f",       0x71a80031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extuhh",    "-g,-f",       0x71a90031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"exts1bil",  "-g,-f",       0x71b40031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"exts2bil",  "-g,-f",       0x71b50031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"exts4bil",  "-g,-f",       0x71b60031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extsbl",    "-g,-f",       0x71b00031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extshl",    "-g,-f",       0x71b10031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"exts1bih",  "-g,-f",       0x71bc0031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"exts2bih",  "-g,-f",       0x71bd0031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"exts4bih",  "-g,-f",       0x71be0031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extsbh",    "-g,-f",       0x71b80031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extshh",    "-g,-f",       0x71b90031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"extu3bw",   "-g,-f",       0x71800031,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"repib",     "-g,-f=J",     0x70000030,  0xff80003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"repih",     "-g,-f-J",     0x70800030,  0xffc0003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"repiw",     "-g,-f=v",     0x70c00030,  0xffe0003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"repid",     "-g,-f+o",     0x70e00030,  0xfff0003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"repiq",     "-g,-f+u",     0x70f00030,  0xfff8003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"repio",     "-g,-f+v",     0x70f80030,  0xfffc003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"movw",      "-g=K,-f=v",   0x70000036,  0xfc00003f,  WR_1|RD_1|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"movd",      "-g-H,-f+o",   0x70000037,  0xfe10003f,  WR_1|RD_1|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"movq",      "-g-H,-f+o",   0x70100037,  0xfe10003f,  WR_1|RD_1|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"movo",      "-g-H,-f+o",   0x72000037,  0xfe10003f,  WR_1|RD_1|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"shufw2",    "-g,-f",       0x70000033,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"shufw4",    "-g,-f",       0x70800033,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"shufw8",    "-g,-f",       0x71000033,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"shufd2",    "-g,-f",       0x70200033,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"shufd4",    "-g,-f",       0x70a00033,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"shufq2",    "-g,-f",       0x70400033,  0xffff003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"gshufw",    "-g,-e,-f,-I", 0x7200003b,  0xff80003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"gshufwb",   "-g,-e,-f",    0x7300003b,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512,             0 },      // MXU3.1 remove
++{"gshufwb_1", "-g,-e,-f,-P", 0x7280003b,  0xffc0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512_1,           0 },      // MXU3.1 add
++{"gshufwb_2", "-g,-e,-f,-P", 0x7380003b,  0xffc0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512_1,           0 },      // MXU3.1 add
++{"gshufvb",   "-g,-e,-f",    0x7380002e,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512_1,           0 },      // MXU3.1 add
++{"gshufb",    "-g,-e,-f",    0x7020002b,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512,             0 },      // MXU3.1 remove
++{"gshufwh",   "-g,-e,-f",    0x7200002e,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512,             0 },      // MXU3.1 remove
++{"gshufh",    "-g,-e,-f",    0x7280002e,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512,             0 },      // MXU3.1 remove
++{"ilve2bi",   "-g,-e,-f",    0x70000038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilve4bi",   "-g,-e,-f",    0x70200038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilveb",     "-g,-e,-f",    0x70400038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilveh",     "-g,-e,-f",    0x70600038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvew",     "-g,-e,-f",    0x70800038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilved",     "-g,-e,-f",    0x70a00038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilveq",     "-g,-e,-f",    0x70c00038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilveo",     "-g,-e,-f",    0x70e00038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvo2bi",   "-g,-e,-f",    0x72000038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvo4bi",   "-g,-e,-f",    0x72200038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvob",     "-g,-e,-f",    0x72400038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvoh",     "-g,-e,-f",    0x72600038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvow",     "-g,-e,-f",    0x72800038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvod",     "-g,-e,-f",    0x72a00038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvoq",     "-g,-e,-f",    0x72c00038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"ilvoo",     "-g,-e,-f",    0x72e00038,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"bshli",     "-g,-f,=M",    0x70000039,  0xff80003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"bshri",     "-g,-f,=M",    0x71000039,  0xff80003f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"bshl",      "-g,-e,-f",    0x70800039,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"bshr",      "-g,-e,-f",    0x71800039,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++/* Register Load and MISC.  */
++{"mtcpuw",    "+k,-h",    0x7340002e,  0xffff003f,  WR_1|RD_2|CM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"mfcpuw",    "-i,s",     0x701b0003,  0xfc1ff83f,  WR_1|RD_2|CM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"mtfpuw",    "D,-h",     0x7300002e,  0xffff003f,  WR_1|RD_2|CM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"mffpuw",    "-i,T",     0x7320002e,  0xffe0f83f,  WR_1|RD_2|CM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"ctcmxu",    "-j,s",     0x70110003,  0xfc1f07ff,  WR_1|RD_2|CM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"cfcmxu",    "+k,-j",    0x70100003,  0xffff003f,  WR_1|RD_2|CM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sumz",      "-m",       0x4a60001c,  0xffffff3f,  WR_1,          0,  0,  MXU512 | MXU512_1,  0 },
++{"mfsum",     "-g,-n",    0x4a60000f,  0xffffe03f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"mfsumz",    "-g,-n",    0x4a60001e,  0xffffe03f,  WR_1|WR_2|RD_2,0,  0,  MXU512 | MXU512_1,  0 },
++{"mtsum",     "-c,-e",    0x4a60001d,  0xffe0ff3f,  WR_1|RD_2,     0,  0,  MXU512 | MXU512_1,  0 },
++{"mxsum",     "-g,-e,-n", 0x4a60001f,  0xffe0e03f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"liwr",      "-i,+^",    0x4a600000,  0xffe0003f,  WR_1,          0,  0,  MXU512 | MXU512_1,  0 },
++{"cmvw",   "-g,-e,-f,-R", 0x70000032,  0xfe00003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"pmaph",     "-g,-e,-f", 0x4a600009,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++{"pmapw",     "-g,-e,-f", 0x4a60000a,  0xffe0003f,  WR_1|RD_2|RD_3,0,  0,  MXU512 | MXU512_1,  0 },
++/* Load/Store encode. */
++{"luw",    "-g-4,s",      0x70000012,  0xfc1f003f,  WR_1|RD_3|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud",    "-g-3,s",      0x70000013,  0xfc1f083f,  WR_1|RD_3|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq",    "-g-2,s",      0x70000813,  0xfc1f183f,  WR_1|RD_3|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luo",    "-g-1,s",      0x70001813,  0xfc1f383f,  WR_1|RD_3|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law",    "-g-4,-W(s)",  0x70000010,  0xfc00003f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad",    "-g-3,-D(s)",  0x70000011,  0xfc00083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq",    "-g-2,-Q(s)",  0x70000811,  0xfc00183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lao",    "-g-1,-O(s)",  0x70001811,  0xfc00383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suw",    "-f-8,s",      0x70000016,  0xfc1f003f,  RD_1|RD_3|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sud",    "-f-7,s",      0x70000017,  0xfc1f007f,  RD_1|RD_3|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suq",    "-f-6,s",      0x70000057,  0xfc1f00ff,  RD_1|RD_3|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suo",    "-f-5,s",      0x700000d7,  0xfc1f01ff,  RD_1|RD_3|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"saw",    "-f-8,-W(s)",  0x70000014,  0xfc00003f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sad",    "-f-7,-D(s)",  0x70000015,  0xfc00007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"saq",    "-f-6,-Q(s)",  0x70000055,  0xfc0000ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sao",    "-f-5,-O(s)",  0x700000d5,  0xfc0001ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luo2b",  "-g+w,-9,s",   0x7000381b,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luo2h",  "-g+w,-9,s",   0x7004381b,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luo2w",  "-g+w,-9,s",   0x7008381b,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luo2d",  "-g+w,-9,s",   0x700c381b,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luo2q",  "-g+w,-9,s",   0x7010381b,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lao2b",  "-g+w,-9,s",   0x70003819,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lao2h",  "-g+w,-9,s",   0x70043819,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lao2w",  "-g+w,-9,s",   0x70083819,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lao2d",  "-g+w,-9,s",   0x700c3819,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lao2q",  "-g+w,-9,s",   0x70103819,  0xfc1e783f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suo2w",  "-f-@,-#,s",   0x700000df,  0xfc1f01ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suo2d",  "-f-@,-#,s",   0x700800df,  0xfc1f01ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suo2q",  "-f-@,-#,s",   0x701000df,  0xfc1f01ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sao2w",  "-f-@,-#,s",   0x700000dd,  0xfc1f01ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sao2d",  "-f-@,-#,s",   0x700800dd,  0xfc1f01ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sao2q",  "-f-@,-#,s",   0x701000dd,  0xfc1f01ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw2b",  "-g-<,-$,s",   0x7000001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw2h",  "-g-<,-$,s",   0x7010001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw4b",  "-g->,-%,s",   0x7002001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw4h",  "-g->,-%,s",   0x7012001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw8b",  "-g-?,-&,s",   0x7004001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw8h",  "-g-?,-&,s",   0x7014001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw16b", "-g+w,-*,s",   0x7006001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luw16h", "-g+w,-*,s",   0x7016001b,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law2b",  "-g-<,-$,s",   0x70000019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law2h",  "-g-<,-$,s",   0x70100019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law4b",  "-g->,-%,s",   0x70020019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law4h",  "-g->,-%,s",   0x70120019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law8b",  "-g-?,-&,s",   0x70040019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law8h",  "-g-?,-&,s",   0x70140019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law16b", "-g+w,-*,s",   0x70060019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"law16h", "-g+w,-*,s",   0x70160019,  0xfc1e083f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud2b",  "-g->,-^,s",   0x7000081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud2h",  "-g->,-^,s",   0x7008081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud2w",  "-g->,-^,s",   0x7010081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud4b",  "-g-?,-!,s",   0x7002081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud4h",  "-g-?,-!,s",   0x700a081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud4w",  "-g-?,-!,s",   0x7012081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud8b",  "-g+w,-|,s",   0x7004081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud8h",  "-g+w,-|,s",   0x700c081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lud8w",  "-g+w,-|,s",   0x7014081b,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad2b",  "-g->,-^,s",   0x70000819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad2h",  "-g->,-^,s",   0x70080819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad2w",  "-g->,-^,s",   0x70100819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad4b",  "-g-?,-!,s",   0x70020819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad4h",  "-g-?,-!,s",   0x700a0819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad4w",  "-g-?,-!,s",   0x70120819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad8b",  "-g+w,-|,s",   0x70040819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad8h",  "-g+w,-|,s",   0x700c0819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"lad8w",  "-g+w,-|,s",   0x70140819,  0xfc1e183f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sud2w",  "-f-6,-(,s",   0x7000001f,  0xfc1f007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sud4w",  "-f-5,-),s",   0x7008001f,  0xfc1f007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sud8w",  "-f-@,-~,s",   0x7010001f,  0xfc1f007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sad2w",  "-f-6,-(,s",   0x7000001d,  0xfc1f007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sad4w",  "-f-5,-),s",   0x7008001d,  0xfc1f007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"sad8w",  "-f-@,-~,s",   0x7010001d,  0xfc1f007f,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq2b",  "-g-?,-X,s",   0x7000181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq2h",  "-g-?,-X,s",   0x7008181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq2w",  "-g-?,-X,s",   0x7010181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq2d",  "-g-?,-X,s",   0x7018181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq4b",  "-g+w,-Y,s",   0x7002181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq4h",  "-g+w,-Y,s",   0x700a181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq4w",  "-g+w,-Y,s",   0x7012181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"luq4d",  "-g+w,-Y,s",   0x701a181b,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq2b",  "-g-?,-X,s",   0x70001819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq2h",  "-g-?,-X,s",   0x70081819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq2w",  "-g-?,-X,s",   0x70101819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq2d",  "-g-?,-X,s",   0x70181819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq4b",  "-g+w,-Y,s",   0x70021819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq4h",  "-g+w,-Y,s",   0x700a1819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq4w",  "-g+w,-Y,s",   0x70121819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"laq4d",  "-g+w,-Y,s",   0x701a1819,  0xfc1e383f,  WR_1|RD_4|LM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suq2w",  "-f-5,-Z,s",   0x7000005f,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suq2d",  "-f-5,-Z,s",   0x7010005f,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suq4w",  "-f-@,-V,s",   0x7004005f,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"suq4d",  "-f-@,-V,s",   0x7014005f,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"saq2w",  "-f-5,-Z,s",   0x7000005d,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"saq2d",  "-f-5,-Z,s",   0x7010005d,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"saq4w",  "-f-@,-V,s",   0x7004005d,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++{"saq4d",  "-f-@,-V,s",   0x7014005d,  0xfc1f00ff,  RD_1|RD_4|SM,  0,  0,  MXU512 | MXU512_1,  0 },
++/* Neural NetWorks Accelerate.  */
++{"nnrrd",  "-g,-N",       0x7020003a,  0xffe0003f,  WR_1|CM,       0,  0,  MXU512 | MXU512_1,  0 },
++{"nndrd",  "-g,-N",       0x7060003a,  0xffe0003f,  WR_1|CM,       0,  0,  MXU512 | MXU512_1,  0 },
++{"nncmd",  "-L",          0x70a0003a,  0xffe0003f,  CM,            0,  0,  MXU512 | MXU512_1,  0 },
++/* End Ingenic MXU R3 Instructions */
+ /* No hazard protection on coprocessor instructions--they shouldn't
+    change the state of the processor and if they do it's up to the
+    user to put in nops as necessary.  These are at the end so that the
