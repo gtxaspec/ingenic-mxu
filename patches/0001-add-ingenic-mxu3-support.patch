@@ -1,6 +1,17 @@
 --- a/include/opcode/mips.h
 +++ b/include/opcode/mips.h
-@@ -239,7 +239,19 @@
+@@ -171,6 +171,10 @@
+   /* An index selected by an integer, e.g. [1].  */
+   OP_IMM_INDEX,
+ 
++  /* An index that must always be literal 0, e.g. [0].  Used by some
++     Ingenic MXU3 store instructions where the index field is hardwired.  */
++  OP_IMM0_INDEX,
++
+   /* An index selected by a register, e.g. [$2].  */
+   OP_REG_INDEX,
+ 
+@@ -239,7 +243,19 @@
    OP_REG_MXU128,
  
    /* Ingenic MXU2 control registers.  */
@@ -21,7 +32,7 @@
  };
  
  /* Base class for all operands.  */
-@@ -1074,6 +1086,12 @@
+@@ -1074,6 +1090,12 @@
  /* Ingenic MXU2 128-bit SIMD (XBurst1/XBurst2 COP2).  */
  #define ASE_MXU128		0x04000000
  
@@ -640,3 +651,278 @@
  /* No hazard protection on coprocessor instructions--they shouldn't
     change the state of the processor and if they do it's up to the
     user to put in nops as necessary.  These are at the end so that the
+--- a/opcodes/mips-dis.c
++++ b/opcodes/mips-dis.c
+@@ -1015,6 +1015,18 @@
+       return true;
+     }
+ 
++  if (startswith (option, "mxu3.1"))
++    {
++      mips_ase |= ASE_MXU512 | ASE_MXU512_1;
++      return true;
++    }
++
++  if (startswith (option, "mxu3"))
++    {
++      mips_ase |= ASE_MXU512;
++      return true;
++    }
++
+   return false;
+ }
+ 
+@@ -1273,6 +1285,22 @@
+       infprintf (info->stream, dis_style_register, "$%d", regno);
+       break;
+ 
++    case OP_REG_MXU512:
++      infprintf (info->stream, dis_style_register, "$vr%d", regno);
++      break;
++
++    case OP_REG_MXU512_VSR:
++      infprintf (info->stream, dis_style_register, "$vsr%d", regno);
++      break;
++
++    case OP_REG_MXU512_VWR:
++      infprintf (info->stream, dis_style_register, "$vwr%d", regno);
++      break;
++
++    case OP_REG_MXU512_MCS:
++      infprintf (info->stream, dis_style_register, "$mcs%d", regno);
++      break;
++
+     }
+ }
+ 
+@@ -1759,6 +1787,12 @@
+       infprintf (is, dis_style_text, "]");
+       break;
+ 
++    case OP_IMM0_INDEX:
++      infprintf (is, dis_style_text, "[");
++      infprintf (is, dis_style_immediate, "%d", 0);
++      infprintf (is, dis_style_text, "]");
++      break;
++
+     case OP_REG_INDEX:
+       infprintf (is, dis_style_text, "[");
+       print_reg (info, opcode, OP_REG_GP, uval);
+@@ -1867,6 +1901,7 @@
+ 		case OP_VU0_SUFFIX:
+ 		case OP_VU0_MATCH_SUFFIX:
+ 		case OP_IMM_INDEX:
++		case OP_IMM0_INDEX:
+ 		case OP_REG_INDEX:
+ 		case OP_SAVE_RESTORE_LIST:
+ 		  break;
+--- a/gas/config/tc-mips.c
++++ b/gas/config/tc-mips.c
+@@ -1584,6 +1584,10 @@
+     OPTION_NO_LOONGSON_EXT2,
+     OPTION_MXU128,
+     OPTION_NO_MXU128,
++    OPTION_MXU512,
++    OPTION_NO_MXU512,
++    OPTION_MXU512_1,
++    OPTION_NO_MXU512_1,
+     OPTION_END_OF_ENUM
+   };
+ 
+@@ -1654,6 +1658,10 @@
+   {"mno-loongson-ext2", no_argument, NULL, OPTION_NO_LOONGSON_EXT2},
+   {"mmxu2", no_argument, NULL, OPTION_MXU128},
+   {"mno-mxu2", no_argument, NULL, OPTION_NO_MXU128},
++  {"mmxu3", no_argument, NULL, OPTION_MXU512},
++  {"mno-mxu3", no_argument, NULL, OPTION_NO_MXU512},
++  {"mmxu3.1", no_argument, NULL, OPTION_MXU512_1},
++  {"mno-mxu3.1", no_argument, NULL, OPTION_NO_MXU512_1},
+ 
+   /* Old-style architecture options.  Don't add more of these.  */
+   {"m4650", no_argument, NULL, OPTION_M4650},
+@@ -1880,6 +1888,16 @@
+     OPTION_MXU128, OPTION_NO_MXU128,
+     0, 0, -1, -1,
+     -1 },
++
++  { "mxu3", ASE_MXU512, 0,
++    OPTION_MXU512, OPTION_NO_MXU512,
++    0, 0, -1, -1,
++    -1 },
++
++  { "mxu3.1", ASE_MXU512_1, 0,
++    OPTION_MXU512_1, OPTION_NO_MXU512_1,
++    0, 0, -1, -1,
++    -1 },
+ };
+ 
+ /* The set of ASEs that require -mfp64.  */
+@@ -2714,7 +2732,11 @@
+ #define RTYPE_R5900_ACC	0x0400000
+ #define RTYPE_MSA	0x0800000
+ #define RTYPE_MXU128	0x1000000
++#define RTYPE_MXU512	0x2000000
++#define RTYPE_MXU512_VSR 0x4000000
+ #define RWARN		0x8000000
++#define RTYPE_MXU512_VWR 0x10000000
++#define RTYPE_MXU512_MCS 0x20000000
+ 
+ #define GENERIC_REGISTER_NUMBERS \
+     {"$0",	RTYPE_NUM | 0},  \
+@@ -3845,10 +3867,33 @@
+       symbol_table_insert (symbol_new (regname, reg_section,
+ 				       &zero_address_frag, RTYPE_MSA | i));
+ 
+-      /* MXU2 register.  */
++      /* MXU2 register, also accepted as MXU3 vector register.  */
+       sprintf (regname, "$vr%d", i);
+       symbol_table_insert (symbol_new (regname, reg_section,
+-				       &zero_address_frag, RTYPE_MXU128 | i));
++				       &zero_address_frag,
++				       RTYPE_MXU128 | RTYPE_MXU512 | i));
++
++      /* MXU3 wide register $vwr0-$vwr31.  */
++      sprintf (regname, "$vwr%d", i);
++      symbol_table_insert (symbol_new (regname, reg_section,
++				       &zero_address_frag,
++				       RTYPE_MXU512_VWR | i));
++    }
++
++  /* MXU3 vector scalar accumulators $vsr0-$vsr3 and multiplier control
++     status registers $mcs0-$mcs3 (only 4 each).  */
++  for (i = 0; i < 4; i++)
++    {
++      char regname[16];
++      sprintf (regname, "$vsr%d", i);
++      symbol_table_insert (symbol_new (regname, reg_section,
++				       &zero_address_frag,
++				       RTYPE_MXU512_VSR | i));
++
++      sprintf (regname, "$mcs%d", i);
++      symbol_table_insert (symbol_new (regname, reg_section,
++				       &zero_address_frag,
++				       RTYPE_MXU512_MCS | i));
+     }
+ 
+   obstack_init (&mips_operand_tokens);
+@@ -4665,6 +4710,7 @@
+     case OP_VU0_SUFFIX:
+     case OP_VU0_MATCH_SUFFIX:
+     case OP_IMM_INDEX:
++    case OP_IMM0_INDEX:
+       abort ();
+ 
+     case OP_REG28:
+@@ -5111,6 +5157,18 @@
+ 
+     case OP_REG_MXU128_CR:
+       return RTYPE_NUM;
++
++    case OP_REG_MXU512:
++      return RTYPE_MXU512;
++
++    case OP_REG_MXU512_VSR:
++      return RTYPE_MXU512_VSR;
++
++    case OP_REG_MXU512_VWR:
++      return RTYPE_MXU512_VWR;
++
++    case OP_REG_MXU512_MCS:
++      return RTYPE_MXU512_MCS;
+     }
+   abort ();
+ }
+@@ -5978,6 +6036,25 @@
+   return true;
+ }
+ 
++/* OP_IMM0_INDEX matcher.  Index field is hardwired to 0.  */
++
++static bool
++match_imm0_index_operand (struct mips_arg_info *arg,
++			  const struct mips_operand *operand)
++{
++  if (arg->token->type != OT_INTEGER_INDEX)
++    return false;
++
++  if (arg->token->u.index != 0)
++    {
++      match_out_of_range (arg);
++      return false;
++    }
++  insn_insert_operand (arg->insn, operand, 0);
++  ++arg->token;
++  return true;
++}
++
+ /* OP_REG_INDEX matcher.  */
+ 
+ static bool
+@@ -6326,6 +6403,9 @@
+     case OP_IMM_INDEX:
+       return match_imm_index_operand (arg, operand);
+ 
++    case OP_IMM0_INDEX:
++      return match_imm0_index_operand (arg, operand);
++
+     case OP_REG_INDEX:
+       return match_reg_index_operand (arg, operand);
+ 
+@@ -7580,8 +7660,8 @@
+ 		      (unsigned long) address_expr->X_add_number);
+ 	    if (!mips_relax_branch)
+ 	      {
+-		/* MXU2 branch: 10-bit offset at bit position 6.  */
+-		if ((ip->insn_mo->ase & ASE_MXU128)
++		/* MXU2/MXU3 branch: 10-bit offset at bit position 6.  */
++		if ((ip->insn_mo->ase & (ASE_MXU128 | ASE_MXU512 | ASE_MXU512_1))
+ 		    && (ip->insn_mo->pinfo & INSN_COND_BRANCH_DELAY))
+ 		  {
+ 		    if ((address_expr->X_add_number + (1 << 11))
+@@ -7757,9 +7837,10 @@
+ 	     && (mips_opts.at || mips_pic == NO_PIC)
+ 	     /* Don't relax BPOSGE32/64 or BC1ANY2T/F and BC1ANY4T/F
+ 	        as they have no complementing branches.
+-	        Don't relax MXU2 branches (non-standard encoding).  */
++	        Don't relax MXU2/MXU3 branches (non-standard encoding).  */
+ 	     && !(ip->insn_mo->ase & (ASE_MIPS3D | ASE_DSP64 | ASE_DSP
+-				      | ASE_MXU128)));
++				      | ASE_MXU128
++				      | ASE_MXU512 | ASE_MXU512_1)));
+ 
+   if (!HAVE_CODE_COMPRESSION
+       && address_expr
+@@ -16209,6 +16290,21 @@
+ 			  _("MXU2 branch address range overflow (%lx)"),
+ 			  (long) *valP);
+ 	}
++      /* MXU3 branch: 10-bit offset at bit position 6, shift 2.
++	 Detect by opcode 0x12 with bits 25:21 = 0x13 and func 0x10-0x17.
++	 Combined fixed bits mask: 0xffe00038 == 0x4a600010.  */
++      else if ((insn & 0xffe00038) == 0x4a600010)
++	{
++	  if (*valP + 0x800 <= 0xfff)
++	    {
++	      insn |= ((*valP >> 2) & 0x3ff) << 6;
++	      write_insn (buf, insn);
++	    }
++	  else
++	    as_bad_where (fixP->fx_file, fixP->fx_line,
++			  _("MXU3 branch address range overflow (%lx)"),
++			  (long) *valP);
++	}
+       else if (*valP + 0x20000 <= 0x3ffff)
+ 	{
+ 	  insn |= (*valP >> 2) & 0xffff;
+@@ -20506,6 +20602,11 @@
+ -mmxu2			generate Ingenic MXU2 128-bit SIMD instructions\n\
+ -mno-mxu2		do not generate Ingenic MXU2 instructions\n"));
+   fprintf (stream, _("\
++-mmxu3			generate Ingenic MXU3 512-bit SIMD instructions\n\
++-mno-mxu3		do not generate Ingenic MXU3 instructions\n\
++-mmxu3.1		also generate Ingenic MXU3.1 instructions\n\
++-mno-mxu3.1		do not generate Ingenic MXU3.1 instructions\n"));
++  fprintf (stream, _("\
+ -minsn32		only generate 32-bit microMIPS instructions\n\
+ -mno-insn32		generate all microMIPS instructions\n"));
+ #if DEFAULT_MIPS_FIX_LOONGSON3_LLSC
