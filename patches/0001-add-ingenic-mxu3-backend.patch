@@ -61,3 +61,1120 @@
  /* Temporary register that is used when restoring $gp after a call.  $4 and $5
     are used for returning complex double values in soft-float code, so $6 is the
     first suitable candidate for TARGET_MIPS16.  For !TARGET_MIPS16 we can use
+--- a/gcc/config/mips/mips.md
++++ b/gcc/config/mips/mips.md
+@@ -8106,6 +8106,9 @@
+ 
+ (include "mips-mxu2.md")
+ 
++;; MXU3 patterns - to be ported from vendor source incrementally
++;; (include "mips-mxu3.md")
++
+ (define_c_enum "unspec" [
+   UNSPEC_ADDRESS_FIRST
+ ])
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -485,7 +485,7 @@
+ mips*-*-*)
+ 	cpu_type=mips
+ 	d_target_objs="mips-d.o"
+-	extra_headers="loongson.h loongson-mmiintrin.h msa.h mxu2.h"
++	extra_headers="loongson.h loongson-mmiintrin.h msa.h mxu2.h mxu3.h"
+ 	extra_objs="frame-header-opt.o"
+ 	extra_options="${extra_options} g.opt fused-madd.opt mips/mips-tables.opt"
+ 	;;
+--- a/gcc/config/mips/mips-modes.def
++++ b/gcc/config/mips/mips-modes.def
+@@ -36,6 +36,20 @@
+ VECTOR_MODE (FLOAT, SF, 8);   /*            V8SF      */
+ VECTOR_MODE (FLOAT, DF, 4);   /*                 V4DF */
+ 
++/* For Ingenic MXU3 512-bit SIMD (XBurst2). Each VPR is 512 bits = 4 quarters
++   of 128 bits.  */
++VECTOR_MODE (INT, QI, 64);    /* V64QI                */
++VECTOR_MODE (INT, HI, 32);    /*       V32HI          */
++VECTOR_MODE (INT, SI, 16);    /*            V16SI     */
++VECTOR_MODE (INT, DI, 8);     /*                 V8DI */
++VECTOR_MODE (INT, TI, 4);     /*                 V4TI */
++/* V2OI omitted - OI scalar mode not defined in vanilla GCC.  */
++VECTOR_MODE (FLOAT, SF, 16);  /*            V16SF     */
++VECTOR_MODE (FLOAT, DF, 8);   /*                 V8DF */
++
++/* Sub-quarter modes used by some MXU3 patterns.  */
++VECTOR_MODE (INT, SI, 1);     /*            V1SI      */
++
+ VECTOR_MODES (FRACT, 4);	/* V4QQ  V2HQ */
+ VECTOR_MODES (UFRACT, 4);	/* V4UQQ V2UHQ */
+ VECTOR_MODES (ACCUM, 4);	/*       V2HA */
+--- /dev/null
++++ b/gcc/config/mips/mxu3.h
+@@ -0,0 +1,1068 @@
++/* MIPS MXU3 intrinsics include file.
++
++   Copyright (C) 2006 Ingenic Semiconductor CO.,LTD.
++
++   This file is part of GCC.
++
++   GCC is free software; you can redistribute it and/or modify it
++   under the terms of the GNU General Public License as published
++   by the Free Software Foundation; either version 3, or (at your
++   option) any later version.
++
++   GCC is distributed in the hope that it will be useful, but WITHOUT
++   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
++   License for more details.
++
++   Under Section 7 of GPL version 3, you are granted additional
++   permissions described in the GCC Runtime Library Exception, version
++   3.1, as published by the Free Software Foundation.
++
++   You should have received a copy of the GNU General Public License and
++   a copy of the GCC Runtime Library Exception along with this program;
++   see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef _MXU3_H
++#define _MXU3_H 1
++
++#if defined(__mips_mxu3)
++
++typedef __builtin_mxu3_v64i8  v64i8  __attribute__((aligned(64)));
++typedef __builtin_mxu3_v32i16 v32i16 __attribute__((aligned(64)));
++typedef __builtin_mxu3_v16i32 v16i32 __attribute__((aligned(64)));
++typedef __builtin_mxu3_v8i64  v8i64  __attribute__((aligned(64)));
++typedef __builtin_mxu3_v4i128 v4i128 __attribute__((aligned(64)));
++
++typedef __builtin_mxu3_v64u8  v64u8  __attribute__((aligned(64)));
++typedef __builtin_mxu3_v32u16 v32u16 __attribute__((aligned(64)));
++typedef __builtin_mxu3_v16u32 v16u32 __attribute__((aligned(64)));
++typedef __builtin_mxu3_v8u64  v8u64  __attribute__((aligned(64)));
++typedef __builtin_mxu3_v4u128 v4u128 __attribute__((aligned(64)));
++typedef __builtin_mxu3_v2u256 v2u256 __attribute__((aligned(64)));
++
++typedef __builtin_mxu3_v16f32 v16f32 __attribute__((aligned(64)));
++
++typedef signed int                   _m32i_ptr;
++typedef unsigned int                 _m32u_ptr;
++typedef signed long long             _m64i_ptr;
++typedef unsigned long long           _m64u_ptr;
++
++typedef _m64u_ptr _m128u_ptr[2];
++typedef _m64u_ptr _m256u_ptr[4];
++
++/* For VWR declaration.  */
++typedef __builtin_mxu3_v1i32 v1i32 __attribute__((aligned(4)));
++
++#ifndef __clang__
++
++/* Branch.  */
++//extern int __builtin_mxu3_bnezb(v64u8);
++#define _mx512_bnezb __builtin_mxu3_bnezb
++//extern int __builtin_mxu3_bnezh(v32u16);
++#define _mx512_bnezh __builtin_mxu3_bnezh
++//extern int __builtin_mxu3_bnezw(v16u32);
++#define _mx512_bnezw __builtin_mxu3_bnezw
++//extern int __builtin_mxu3_bnezv(v64u8);
++#define _mx512_bnezv __builtin_mxu3_bnezv
++
++//extern int __builtin_mxu3_beqzb(v64u8);
++#define _mx512_beqzb __builtin_mxu3_beqzb
++//extern int __builtin_mxu3_beqzh(v32u16);
++#define _mx512_beqzh __builtin_mxu3_beqzh
++//extern int __builtin_mxu3_beqzw(v16u32);
++#define _mx512_beqzw __builtin_mxu3_beqzw
++//extern int __builtin_mxu3_beqzv(v64u8);
++#define _mx512_beqzv __builtin_mxu3_beqzv
++
++/* Compare */
++//extern v64i8 __builtin_mxu3_ceqb(v64i8, v64i8);
++#define _mx512_ceqb __builtin_mxu3_ceqb
++//extern v32i16 __builtin_mxu3_ceqh(v32i16, v32i16);
++#define _mx512_ceqh __builtin_mxu3_ceqh
++//extern v16i32 __builtin_mxu3_ceqw(v16i32, v16i32);
++#define _mx512_ceqw __builtin_mxu3_ceqw
++//extern v64i8 __builtin_mxu3_ceqzb(v64i8);
++#define _mx512_ceqzb __builtin_mxu3_ceqzb
++//extern v32i16 __builtin_mxu3_ceqzh(v32i16);
++#define _mx512_ceqzh __builtin_mxu3_ceqzh
++//extern v16i32 __builtin_mxu3_ceqzw(v16i32);
++#define _mx512_ceqzw __builtin_mxu3_ceqzw
++
++//extern v64i8 __builtin_mxu3_clesb(v64i8, v64i8);
++#define _mx512_clesb __builtin_mxu3_clesb
++//extern v32i16 __builtin_mxu3_clesh(v32i16, v32i16);
++#define _mx512_clesh __builtin_mxu3_clesh
++//extern v16i32 __builtin_mxu3_clesw(v16i32, v16i32);
++#define _mx512_clesw __builtin_mxu3_clesw
++
++//extern v64i8 __builtin_mxu3_cleub(v64u8, v64u8);
++#define _mx512_cleub __builtin_mxu3_cleub
++//extern v32i16 __builtin_mxu3_cleuh(v32u16, v32u16);
++#define _mx512_cleuh __builtin_mxu3_cleuh
++//extern v16i32 __builtin_mxu3_cleuw(v16u32, v16u32);
++#define _mx512_cleuw __builtin_mxu3_cleuw
++
++//extern v64i8 __builtin_mxu3_clezb(v64i8);
++#define _mx512_clezb __builtin_mxu3_clezb
++//extern v32i16 __builtin_mxu3_clezh(v32i16);
++#define _mx512_clezh __builtin_mxu3_clezh
++//extern v16i32 __builtin_mxu3_clezw(v16i32);
++#define _mx512_clezw __builtin_mxu3_clezw
++
++//extern v64i8 __builtin_mxu3_cltsb(v64i8, v64i8);
++#define _mx512_cltsb __builtin_mxu3_cltsb
++//extern v32i16 __builtin_mxu3_cltsh(v32i16, v32i16);
++#define _mx512_cltsh __builtin_mxu3_cltsh
++//extern v16i32 __builtin_mxu3_cltsw(v16i32, v16i32);
++#define _mx512_cltsw __builtin_mxu3_cltsw
++
++//extern v64i8 __builtin_mxu3_cltub(v64u8, v64u8);
++#define _mx512_cltub __builtin_mxu3_cltub
++//extern v32i16 __builtin_mxu3_cltuh(v32u16, v32u16);
++#define _mx512_cltuh __builtin_mxu3_cltuh
++//extern v16i32 __builtin_mxu3_cltuw(v16u32, v16u32);
++#define _mx512_cltuw __builtin_mxu3_cltuw
++
++//extern v64i8 __builtin_mxu3_cltzb(v64i8);
++#define _mx512_cltzb __builtin_mxu3_cltzb
++//extern v32i16 __builtin_mxu3_cltzh(v32i16);
++#define _mx512_cltzh __builtin_mxu3_cltzh
++//extern v16i32 __builtin_mxu3_cltzw(v16i32);
++#define _mx512_cltzw __builtin_mxu3_cltzw
++
++/* Integer Arithmetic */
++//extern v64i8 __builtin_mxu3_addb(v64i8, v64i8);
++#define _mx512_addb __builtin_mxu3_addb
++//extern v32i16 __builtin_mxu3_addh(v32i16, v32i16);
++#define _mx512_addh __builtin_mxu3_addh
++//extern v16i32 __builtin_mxu3_addw(v16i32, v16i32);
++#define _mx512_addw __builtin_mxu3_addw
++//extern v1i32 __builtin_mxu3_addiw(v1i32, int);
++#define _mx512_addiw __builtin_mxu3_addiw
++//extern v1i32 __builtin_mxu3_addrw(v1i32, v1i32);
++#define _mx512_addrw __builtin_mxu3_addrw
++
++//extern v64i8 __builtin_mxu3_subb(v64i8, v64i8);
++#define _mx512_subb __builtin_mxu3_subb
++//extern v32i16 __builtin_mxu3_subh(v32i16, v32i16);
++#define _mx512_subh __builtin_mxu3_subh
++//extern v16i32 __builtin_mxu3_subw(v16i32, v16i32);
++#define _mx512_subw __builtin_mxu3_subw
++
++//extern v32i16 __builtin_mxu3_waddsbl(v32i16, v64i8);
++#define _mx512_waddsbl __builtin_mxu3_waddsbl
++//extern v32i16 __builtin_mxu3_waddsbh(v32i16, v64i8);
++#define _mx512_waddsbh __builtin_mxu3_waddsbh
++//extern v16i32 __builtin_mxu3_waddshl(v16i32, v32i16);
++#define _mx512_waddshl __builtin_mxu3_waddshl
++//extern v16i32 __builtin_mxu3_waddshh(v16i32, v32i16);
++#define _mx512_waddshh __builtin_mxu3_waddshh
++//extern v32u16 __builtin_mxu3_waddubl(v32u16, v64u8);
++#define _mx512_waddubl __builtin_mxu3_waddubl
++//extern v32u16 __builtin_mxu3_waddubh(v32u16, v64u8);
++#define _mx512_waddubh __builtin_mxu3_waddubh
++//extern v16u32 __builtin_mxu3_wadduhl(v16u32, v32u16);
++#define _mx512_wadduhl __builtin_mxu3_wadduhl
++//extern v16u32 __builtin_mxu3_wadduhh(v16u32, v32u16);
++#define _mx512_wadduhh __builtin_mxu3_wadduhh
++
++//extern v32i16 __builtin_mxu3_wsubsbl(v32i16, v64i8);
++#define _mx512_wsubsbl __builtin_mxu3_wsubsbl
++//extern v32i16 __builtin_mxu3_wsubsbh(v32i16, v64i8);
++#define _mx512_wsubsbh __builtin_mxu3_wsubsbh
++//extern v16i32 __builtin_mxu3_wsubshl(v16i32, v32i16);
++#define _mx512_wsubshl __builtin_mxu3_wsubshl
++//extern v16i32 __builtin_mxu3_wsubshh(v16i32, v32i16);
++#define _mx512_wsubshh __builtin_mxu3_wsubshh
++//extern v32u16 __builtin_mxu3_wsububl(v32u16, v64u8);
++#define _mx512_wsububl __builtin_mxu3_wsububl
++//extern v32u16 __builtin_mxu3_wsububh(v32u16, v64u8);
++#define _mx512_wsububh __builtin_mxu3_wsububh
++//extern v16u32 __builtin_mxu3_wsubuhl(v16u32, v32u16);
++#define _mx512_wsubuhl __builtin_mxu3_wsubuhl
++//extern v16u32 __builtin_mxu3_wsubuhh(v16u32, v32u16);
++#define _mx512_wsubuhh __builtin_mxu3_wsubuhh
++
++//extern v16u32 __builtin_mxu3_sr1sum2bi(v16u32, int, v64u8);
++#define _mx512_sr1sum2bi __builtin_mxu3_sr1sum2bi
++//extern v16u32 __builtin_mxu3_sr2sum2bi(v16u32, int, v64u8);
++#define _mx512_sr2sum2bi __builtin_mxu3_sr2sum2bi
++//extern v16u32 __builtin_mxu3_sr4sum2bi(v16u32, int, v64u8);
++#define _mx512_sr4sum2bi __builtin_mxu3_sr4sum2bi
++//extern v16u32 __builtin_mxu3_sr8sum2bi(v16u32, int, v64u8);
++#define _mx512_sr8sum2bi __builtin_mxu3_sr8sum2bi
++//extern v16u32 __builtin_mxu3_sr16sum2bi(v16u32, int, v64u8);
++#define _mx512_sr16sum2bi __builtin_mxu3_sr16sum2bi
++
++//extern v16u32 __builtin_mxu3_sr1sum4bi(v16u32, int, v64u8);
++#define _mx512_sr1sum4bi __builtin_mxu3_sr1sum4bi
++//extern v16u32 __builtin_mxu3_sr2sum4bi(v16u32, int, v64u8);
++#define _mx512_sr2sum4bi __builtin_mxu3_sr2sum4bi
++//extern v16u32 __builtin_mxu3_sr4sum4bi(v16u32, int, v64u8);
++#define _mx512_sr4sum4bi __builtin_mxu3_sr4sum4bi
++//extern v16u32 __builtin_mxu3_sr8sum4bi(v16u32, int, v64u8);
++#define _mx512_sr8sum4bi __builtin_mxu3_sr8sum4bi
++//extern v16u32 __builtin_mxu3_sr16sum4bi(v16u32, int, v64u8);
++#define _mx512_sr16sum4bi __builtin_mxu3_sr16sum4bi
++
++//extern v16u32 __builtin_mxu3_sr1sumub(v16u32, int, v64u8);
++#define _mx512_sr1sumub __builtin_mxu3_sr1sumub
++//extern v16u32 __builtin_mxu3_sr2sumub(v16u32, int, v64u8);
++#define _mx512_sr2sumub __builtin_mxu3_sr2sumub
++//extern v16u32 __builtin_mxu3_sr4sumub(v16u32, int, v64u8);
++#define _mx512_sr4sumub __builtin_mxu3_sr4sumub
++//extern v16u32 __builtin_mxu3_sr8sumub(v16u32, int, v64u8);
++#define _mx512_sr8sumub __builtin_mxu3_sr8sumub
++//extern v16u32 __builtin_mxu3_sr16sumub(v16u32, int, v64u8);
++#define _mx512_sr16sumub __builtin_mxu3_sr16sumub
++
++//extern v16u32 __builtin_mxu3_sr1sumuh(v16u32, int, v32u16);
++#define _mx512_sr1sumuh __builtin_mxu3_sr1sumuh
++//extern v16u32 __builtin_mxu3_sr2sumuh(v16u32, int, v32u16);
++#define _mx512_sr2sumuh __builtin_mxu3_sr2sumuh
++//extern v16u32 __builtin_mxu3_sr4sumuh(v16u32, int, v32u16);
++#define _mx512_sr4sumuh __builtin_mxu3_sr4sumuh
++//extern v16u32 __builtin_mxu3_sr8sumuh(v16u32, int, v32u16);
++#define _mx512_sr8sumuh __builtin_mxu3_sr8sumuh
++//extern v16u32 __builtin_mxu3_sr16sumuh(v16u32, int, v32u16);
++#define _mx512_sr16sumuh __builtin_mxu3_sr16sumuh
++
++//extern v16i32  __builtin_mxu3_sr1sumsb(v16i32, int, v64i8);
++#define  _mx512_sr1sumsb  __builtin_mxu3_sr1sumsb
++//extern v16i32  __builtin_mxu3_sr2sumsb(v16i32, int, v64i8);
++#define  _mx512_sr2sumsb  __builtin_mxu3_sr2sumsb
++//extern v16i32  __builtin_mxu3_sr4sumsb(v16i32, int, v64i8);
++#define  _mx512_sr4sumsb  __builtin_mxu3_sr4sumsb
++//extern v16i32  __builtin_mxu3_sr8sumsb(v16i32, int, v64i8);
++#define  _mx512_sr8sumsb  __builtin_mxu3_sr8sumsb
++//extern v16i32 __builtin_mxu3_sr16sumsb(v16i32, int, v64i8);
++#define _mx512_sr16sumsb __builtin_mxu3_sr16sumsb
++
++//extern v16i32  __builtin_mxu3_sr1sumsh(v16i32, int, v32i16);
++#define  _mx512_sr1sumsh  __builtin_mxu3_sr1sumsh
++//extern v16i32  __builtin_mxu3_sr2sumsh(v16i32, int, v32i16);
++#define  _mx512_sr2sumsh  __builtin_mxu3_sr2sumsh
++//extern v16i32  __builtin_mxu3_sr4sumsh(v16i32, int, v32i16);
++#define  _mx512_sr4sumsh  __builtin_mxu3_sr4sumsh
++//extern v16i32  __builtin_mxu3_sr8sumsh(v16i32, int, v32i16);
++#define  _mx512_sr8sumsh  __builtin_mxu3_sr8sumsh
++//extern v16i32 __builtin_mxu3_sr16sumsh(v16i32, int, v32i16);
++#define _mx512_sr16sumsh __builtin_mxu3_sr16sumsh
++
++//extern v16i32  __builtin_mxu3_sr1sumw(v16i32, int, v16i32);
++#define  _mx512_sr1sumw  __builtin_mxu3_sr1sumw
++//extern v16i32  __builtin_mxu3_sr2sumw(v16i32, int, v16i32);
++#define  _mx512_sr2sumw  __builtin_mxu3_sr2sumw
++//extern v16i32  __builtin_mxu3_sr4sumw(v16i32, int, v16i32);
++#define  _mx512_sr4sumw  __builtin_mxu3_sr4sumw
++//extern v16i32  __builtin_mxu3_sr8sumw(v16i32, int, v16i32);
++#define  _mx512_sr8sumw  __builtin_mxu3_sr8sumw
++//extern v16i32 __builtin_mxu3_sr16sumw(v16i32, int, v16i32);
++#define _mx512_sr16sumw __builtin_mxu3_sr16sumw
++
++//extern v64i8 __builtin_mxu3_absb(v64i8);
++#define _mx512_absb __builtin_mxu3_absb
++//extern v32i16 __builtin_mxu3_absh(v32i16);
++#define _mx512_absh __builtin_mxu3_absh
++//extern v16i32 __builtin_mxu3_absw(v16i32);
++#define _mx512_absw __builtin_mxu3_absw
++
++//extern v64i8 __builtin_mxu3_mulb(v64i8, v64i8);
++#define _mx512_mulb __builtin_mxu3_mulb
++//extern v32i16 __builtin_mxu3_mulh(v32i16, v32i16);
++#define _mx512_mulh __builtin_mxu3_mulh
++//extern v16i32 __builtin_mxu3_mulw(v16i32, v16i32);
++#define _mx512_mulw __builtin_mxu3_mulw
++
++//extern v32i16 __builtin_mxu3_smulbe(v64i8, v64i8);
++#define _mx512_smulbe __builtin_mxu3_smulbe
++//extern v32i16 __builtin_mxu3_smulbo(v64i8, v64i8);
++#define _mx512_smulbo __builtin_mxu3_smulbo
++//extern v16i32 __builtin_mxu3_smulhe(v32i16, v32i16);
++#define _mx512_smulhe __builtin_mxu3_smulhe
++//extern v16i32 __builtin_mxu3_smulho(v32i16, v32i16);
++#define _mx512_smulho __builtin_mxu3_smulho
++//extern v32u16 __builtin_mxu3_umulbe(v64u8, v64u8);
++#define _mx512_umulbe __builtin_mxu3_umulbe
++//extern v32u16 __builtin_mxu3_umulbo(v64u8, v64u8);
++#define _mx512_umulbo __builtin_mxu3_umulbo
++//extern v16u32 __builtin_mxu3_umulhe(v32u16, v32u16);
++#define _mx512_umulhe __builtin_mxu3_umulhe
++//extern v16u32 __builtin_mxu3_umulho(v32u16, v32u16);
++#define _mx512_umulho __builtin_mxu3_umulho
++
++//extern v32i16 __builtin_mxu3_wsmulbl(v32i16, v64i8);
++#define _mx512_wsmulbl __builtin_mxu3_wsmulbl
++//extern v32i16 __builtin_mxu3_wsmulbh(v32i16, v64i8);
++#define _mx512_wsmulbh __builtin_mxu3_wsmulbh
++//extern v16i32 __builtin_mxu3_wsmulhl(v16i32, v32i16);
++#define _mx512_wsmulhl __builtin_mxu3_wsmulhl
++//extern v16i32 __builtin_mxu3_wsmulhh(v16i32, v32i16);
++#define _mx512_wsmulhh __builtin_mxu3_wsmulhh
++//extern v32u16 __builtin_mxu3_wumulbl(v32u16, v64u8);
++#define _mx512_wumulbl __builtin_mxu3_wumulbl
++//extern v32u16 __builtin_mxu3_wumulbh(v32u16, v64u8);
++#define _mx512_wumulbh __builtin_mxu3_wumulbh
++//extern v16u32 __builtin_mxu3_wumulhl(v16u32, v32u16);
++#define _mx512_wumulhl __builtin_mxu3_wumulhl
++//extern v16u32 __builtin_mxu3_wumulhh(v16u32, v32u16);
++#define _mx512_wumulhh __builtin_mxu3_wumulhh
++
++//extern v16i32 __builtin_mxu3_mlaw(v16i32, v16i32, v16i32);
++#define _mx512_mlaw __builtin_mxu3_mlaw
++//extern v16i32 __builtin_mxu3_mlsw(v16i32, v16i32, v16i32);
++#define _mx512_mlsw __builtin_mxu3_mlsw
++//extern v16i32 __builtin_mxu3_smlahe(v16i32, v32i16, v32i16);
++#define _mx512_smlahe __builtin_mxu3_smlahe
++//extern v16i32 __builtin_mxu3_smlaho(v16i32, v32i16, v32i16);
++#define _mx512_smlaho __builtin_mxu3_smlaho
++
++//extern v16i32 __builtin_mxu3_smlshe(v16i32, v32i16, v32i16);
++#define _mx512_smlshe __builtin_mxu3_smlshe
++//extern v16i32 __builtin_mxu3_smlsho(v16i32, v32i16, v32i16);
++#define _mx512_smlsho __builtin_mxu3_smlsho
++
++//extern v16i32 __builtin_mxu3_wsmlahl(v16i32, v16i32, v32i16);
++#define _mx512_wsmlahl __builtin_mxu3_wsmlahl
++//extern v16i32 __builtin_mxu3_wsmlahh(v16i32, v16i32, v32i16);
++#define _mx512_wsmlahh __builtin_mxu3_wsmlahh
++//extern v16i32 __builtin_mxu3_wsmlshl(v16i32, v16i32, v32i16);
++#define _mx512_wsmlshl __builtin_mxu3_wsmlshl
++//extern v16i32 __builtin_mxu3_wsmlshh(v16i32, v16i32, v32i16);
++#define _mx512_wsmlshh __builtin_mxu3_wsmlshh
++
++//extern v16u32 __builtin_mxu3_sr1mac2bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr1mac2bi __builtin_mxu3_sr1mac2bi
++//extern v16u32 __builtin_mxu3_sr2mac2bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr2mac2bi __builtin_mxu3_sr2mac2bi
++//extern v16u32 __builtin_mxu3_sr4mac2bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr4mac2bi __builtin_mxu3_sr4mac2bi
++//extern v16u32 __builtin_mxu3_sr8mac2bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr8mac2bi __builtin_mxu3_sr8mac2bi
++//extern v16u32 __builtin_mxu3_sr16mac2bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr16mac2bi __builtin_mxu3_sr16mac2bi
++
++//extern v16u32 __builtin_mxu3_sr1mac4bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr1mac4bi __builtin_mxu3_sr1mac4bi
++//extern v16u32 __builtin_mxu3_sr2mac4bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr2mac4bi __builtin_mxu3_sr2mac4bi
++//extern v16u32 __builtin_mxu3_sr4mac4bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr4mac4bi __builtin_mxu3_sr4mac4bi
++//extern v16u32 __builtin_mxu3_sr8mac4bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr8mac4bi __builtin_mxu3_sr8mac4bi
++//extern v16u32 __builtin_mxu3_sr16mac4bi(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr16mac4bi __builtin_mxu3_sr16mac4bi
++
++//extern v16u32 __builtin_mxu3_sr1macuub(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr1macuub __builtin_mxu3_sr1macuub
++//extern v16u32 __builtin_mxu3_sr2macuub(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr2macuub __builtin_mxu3_sr2macuub
++//extern v16u32 __builtin_mxu3_sr4macuub(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr4macuub __builtin_mxu3_sr4macuub
++//extern v16u32 __builtin_mxu3_sr8macuub(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr8macuub __builtin_mxu3_sr8macuub
++//extern v16u32 __builtin_mxu3_sr16macuub(v16u32, int, v64u8, v64u8, int);
++#define _mx512_sr16macuub __builtin_mxu3_sr16macuub
++
++//extern v16i32 __builtin_mxu3_sr1macsub(v16i32, int, v64i8, v64u8, int);
++#define _mx512_sr1macsub __builtin_mxu3_sr1macsub
++//extern v16i32 __builtin_mxu3_sr2macsub(v16i32, int, v64i8, v64u8, int);
++#define _mx512_sr2macsub __builtin_mxu3_sr2macsub
++//extern v16i32 __builtin_mxu3_sr4macsub(v16i32, int, v64i8, v64u8, int);
++#define _mx512_sr4macsub __builtin_mxu3_sr4macsub
++//extern v16i32 __builtin_mxu3_sr8macsub(v16i32, int, v64i8, v64u8, int);
++#define _mx512_sr8macsub __builtin_mxu3_sr8macsub
++//extern v16i32 __builtin_mxu3_sr16macsub(v16i32, int, v64i8, v64u8, int);
++#define _mx512_sr16macsub __builtin_mxu3_sr16macsub
++
++//extern v16i32 __builtin_mxu3_sr1macssb(v16i32, int, v64i8, v64i8, int);
++#define _mx512_sr1macssb __builtin_mxu3_sr1macssb
++//extern v16i32 __builtin_mxu3_sr2macssb(v16i32, int, v64i8, v64i8, int);
++#define _mx512_sr2macssb __builtin_mxu3_sr2macssb
++//extern v16i32 __builtin_mxu3_sr4macssb(v16i32, int, v64i8, v64i8, int);
++#define _mx512_sr4macssb __builtin_mxu3_sr4macssb
++//extern v16i32 __builtin_mxu3_sr8macssb(v16i32, int, v64i8, v64i8, int);
++#define _mx512_sr8macssb __builtin_mxu3_sr8macssb
++//extern v16i32 __builtin_mxu3_sr16macssb(v16i32, int, v64i8, v64i8, int);
++#define _mx512_sr16macssb __builtin_mxu3_sr16macssb
++
++//extern v16i32 __builtin_mxu3_sr1macssh(v16i32, int, v32i16, v32i16, int);
++#define _mx512_sr1macssh __builtin_mxu3_sr1macssh
++//extern v16i32 __builtin_mxu3_sr2macssh(v16i32, int, v32i16, v32i16, int);
++#define _mx512_sr2macssh __builtin_mxu3_sr2macssh
++//extern v16i32 __builtin_mxu3_sr4macssh(v16i32, int, v32i16, v32i16, int);
++#define _mx512_sr4macssh __builtin_mxu3_sr4macssh
++//extern v16i32 __builtin_mxu3_sr8macssh(v16i32, int, v32i16, v32i16, int);
++#define _mx512_sr8macssh __builtin_mxu3_sr8macssh
++//extern v16i32 __builtin_mxu3_sr16macssh(v16i32, int, v32i16, v32i16, int);
++#define _mx512_sr16macssh __builtin_mxu3_sr16macssh
++
++//extern v16u32 __builtin_mxu3_s1macuub(v16u32, int, v64u8, v64u8);
++#define _mx512_s1macuub __builtin_mxu3_s1macuub
++//extern v16u32 __builtin_mxu3_s2macuub(v16u32, int, v64u8, v64u8);
++#define _mx512_s2macuub __builtin_mxu3_s2macuub
++//extern v16u32 __builtin_mxu3_s4macuub(v16u32, int, v64u8, v64u8);
++#define _mx512_s4macuub __builtin_mxu3_s4macuub
++//extern v16u32 __builtin_mxu3_s8macuub(v16u32, int, v64u8, v64u8);
++#define _mx512_s8macuub __builtin_mxu3_s8macuub
++//extern v16u32 __builtin_mxu3_s16macuub(v16u32, int, v64u8, v64u8);
++#define _mx512_s16macuub __builtin_mxu3_s16macuub
++
++//extern v16i32 __builtin_mxu3_s1macsub(v16i32, int, v64i8, v64u8);
++#define _mx512_s1macsub __builtin_mxu3_s1macsub
++//extern v16i32 __builtin_mxu3_s2macsub(v16i32, int, v64i8, v64u8);
++#define _mx512_s2macsub __builtin_mxu3_s2macsub
++//extern v16i32 __builtin_mxu3_s4macsub(v16i32, int, v64i8, v64u8);
++#define _mx512_s4macsub __builtin_mxu3_s4macsub
++//extern v16i32 __builtin_mxu3_s8macsub(v16i32, int, v64i8, v64u8);
++#define _mx512_s8macsub __builtin_mxu3_s8macsub
++//extern v16i32 __builtin_mxu3_s16macsub(v16i32, int, v64i8, v64u8);
++#define _mx512_s16macsub __builtin_mxu3_s16macsub
++
++//extern v16i32 __builtin_mxu3_s1macssb(v16i32, int, v64i8, v64i8);
++#define _mx512_s1macssb __builtin_mxu3_s1macssb
++//extern v16i32 __builtin_mxu3_s2macssb(v16i32, int, v64i8, v64i8);
++#define _mx512_s2macssb __builtin_mxu3_s2macssb
++//extern v16i32 __builtin_mxu3_s4macssb(v16i32, int, v64i8, v64i8);
++#define _mx512_s4macssb __builtin_mxu3_s4macssb
++//extern v16i32 __builtin_mxu3_s8macssb(v16i32, int, v64i8, v64i8);
++#define _mx512_s8macssb __builtin_mxu3_s8macssb
++//extern v16i32 __builtin_mxu3_s16macssb(v16i32, int, v64i8, v64i8);
++#define _mx512_s16macssb __builtin_mxu3_s16macssb
++
++//extern v16i32 __builtin_mxu3_s1macssh(v16i32, int, v32i16, v32i16);
++#define _mx512_s1macssh __builtin_mxu3_s1macssh
++//extern v16i32 __builtin_mxu3_s2macssh(v16i32, int, v32i16, v32i16);
++#define _mx512_s2macssh __builtin_mxu3_s2macssh
++//extern v16i32 __builtin_mxu3_s4macssh(v16i32, int, v32i16, v32i16);
++#define _mx512_s4macssh __builtin_mxu3_s4macssh
++//extern v16i32 __builtin_mxu3_s8macssh(v16i32, int, v32i16, v32i16);
++#define _mx512_s8macssh __builtin_mxu3_s8macssh
++//extern v16i32 __builtin_mxu3_s16macssh(v16i32, int, v32i16, v32i16);
++#define _mx512_s16macssh __builtin_mxu3_s16macssh
++
++//extern v64i8 __builtin_mxu3_maxab(v64i8, v64i8);
++#define _mx512_maxab __builtin_mxu3_maxab
++//extern v32i16 __builtin_mxu3_maxah(v32i16, v32i16);
++#define _mx512_maxah __builtin_mxu3_maxah
++//extern v16i32 __builtin_mxu3_maxaw(v16i32, v16i32);
++#define _mx512_maxaw __builtin_mxu3_maxaw
++
++//extern v64i8 __builtin_mxu3_maxsb(v64i8, v64i8);
++#define _mx512_maxsb __builtin_mxu3_maxsb
++//extern v32i16 __builtin_mxu3_maxsh(v32i16, v32i16);
++#define _mx512_maxsh __builtin_mxu3_maxsh
++//extern v16i32 __builtin_mxu3_maxsw(v16i32, v16i32);
++#define _mx512_maxsw __builtin_mxu3_maxsw
++
++//extern v64u8 __builtin_mxu3_maxub(v64u8, v64u8);
++#define _mx512_maxub __builtin_mxu3_maxub
++//extern v32u16 __builtin_mxu3_maxuh(v32u16, v32u16);
++#define _mx512_maxuh __builtin_mxu3_maxuh
++//extern v16u32 __builtin_mxu3_maxuw(v16u32, v16u32);
++#define _mx512_maxuw __builtin_mxu3_maxuw
++//extern v64u8 __builtin_mxu3_maxu2bi(v64u8, v64u8);
++#define _mx512_maxu2bi __builtin_mxu3_maxu2bi
++//extern v64u8 __builtin_mxu3_maxu4bi(v64u8, v64u8);
++#define _mx512_maxu4bi __builtin_mxu3_maxu4bi
++
++//extern v64i8 __builtin_mxu3_minab(v64i8, v64i8);
++#define _mx512_minab __builtin_mxu3_minab
++//extern v32i16 __builtin_mxu3_minah(v32i16, v32i16);
++#define _mx512_minah __builtin_mxu3_minah
++//extern v16i32 __builtin_mxu3_minaw(v16i32, v16i32);
++#define _mx512_minaw __builtin_mxu3_minaw
++
++//extern v64i8 __builtin_mxu3_minsb(v64i8, v64i8);
++#define _mx512_minsb __builtin_mxu3_minsb
++//extern v32i16 __builtin_mxu3_minsh(v32i16, v32i16);
++#define _mx512_minsh __builtin_mxu3_minsh
++//extern v16i32 __builtin_mxu3_minsw(v16i32, v16i32);
++#define _mx512_minsw __builtin_mxu3_minsw
++
++//extern v64u8 __builtin_mxu3_minub(v64u8, v64u8);
++#define _mx512_minub __builtin_mxu3_minub
++//extern v32u16 __builtin_mxu3_minuh(v32u16, v32u16);
++#define _mx512_minuh __builtin_mxu3_minuh
++//extern v16u32 __builtin_mxu3_minuw(v16u32, v16u32);
++#define _mx512_minuw __builtin_mxu3_minuw
++//extern v64u8 __builtin_mxu3_minu2bi(v64u8, v64u8);
++#define _mx512_minu2bi __builtin_mxu3_minu2bi
++//extern v64u8 __builtin_mxu3_minu4bi(v64u8, v64u8);
++#define _mx512_minu4bi __builtin_mxu3_minu4bi
++
++//extern v32i16 __builtin_mxu3_satsshb(v32i16);
++#define _mx512_satsshb __builtin_mxu3_satsshb
++//extern v16i32 __builtin_mxu3_satsswb(v16i32);
++#define _mx512_satsswb __builtin_mxu3_satsswb
++//extern v16i32 __builtin_mxu3_satsswh(v16i32);
++#define _mx512_satsswh __builtin_mxu3_satsswh
++
++//extern v64u8 __builtin_mxu3_satsub2bi(v64i8);
++#define _mx512_satsub2bi __builtin_mxu3_satsub2bi
++//extern v64u8 __builtin_mxu3_satsub4bi(v64i8);
++#define _mx512_satsub4bi __builtin_mxu3_satsub4bi
++
++//extern v32u16 __builtin_mxu3_satsuh2bi(v32i16);
++#define _mx512_satsuh2bi __builtin_mxu3_satsuh2bi
++//extern v32u16 __builtin_mxu3_satsuh4bi(v32i16);
++#define _mx512_satsuh4bi __builtin_mxu3_satsuh4bi
++//extern v32u16 __builtin_mxu3_satsuhb(v32i16);
++#define _mx512_satsuhb __builtin_mxu3_satsuhb
++
++//extern v16u32 __builtin_mxu3_satsuw2bi(v16i32);
++#define _mx512_satsuw2bi __builtin_mxu3_satsuw2bi
++//extern v16u32 __builtin_mxu3_satsuw4bi(v16i32);
++#define _mx512_satsuw4bi __builtin_mxu3_satsuw4bi
++//extern v16u32 __builtin_mxu3_satsuwb(v16i32);
++#define _mx512_satsuwb __builtin_mxu3_satsuwb
++//extern v16u32 __builtin_mxu3_satsuwh(v16i32);
++#define _mx512_satsuwh __builtin_mxu3_satsuwh
++
++//extern v64u8 __builtin_mxu3_satuub2bi(v64u8);
++#define _mx512_satuub2bi __builtin_mxu3_satuub2bi
++//extern v64u8 __builtin_mxu3_satuub4bi(v64u8);
++#define _mx512_satuub4bi __builtin_mxu3_satuub4bi
++//extern v32u16 __builtin_mxu3_satuuh2bi(v32u16);
++#define _mx512_satuuh2bi __builtin_mxu3_satuuh2bi
++//extern v32u16 __builtin_mxu3_satuuh4bi(v32u16);
++#define _mx512_satuuh4bi __builtin_mxu3_satuuh4bi
++//extern v32u16 __builtin_mxu3_satuuhb(v32u16);
++#define _mx512_satuuhb __builtin_mxu3_satuuhb
++//extern v16u32 __builtin_mxu3_satuuw4bi(v16u32);
++#define _mx512_satuuw4bi __builtin_mxu3_satuuw4bi
++//extern v16u32 __builtin_mxu3_satuuwb(v16u32);
++#define _mx512_satuuwb __builtin_mxu3_satuuwb
++//extern v16u32 __builtin_mxu3_satuuwh(v16u32);
++#define _mx512_satuuwh __builtin_mxu3_satuuwh
++
++//extern v64i8 __builtin_mxu3_tocb(v64i8);
++#define _mx512_tocb __builtin_mxu3_tocb
++//extern v32i16 __builtin_mxu3_toch(v32i16);
++#define _mx512_toch __builtin_mxu3_toch
++//extern v16i32 __builtin_mxu3_tocw(v16i32);
++#define _mx512_tocw __builtin_mxu3_tocw
++
++/* Bitwise */
++//extern v64u8 __builtin_mxu3_andv(v64u8, v64u8);
++#define _mx512_andv __builtin_mxu3_andv
++//extern v64u8 __builtin_mxu3_andnv(v64u8, v64u8);
++#define _mx512_andnv __builtin_mxu3_andnv
++//extern v64u8 __builtin_mxu3_andib(v64u8, unsigned int);
++#define _mx512_andib __builtin_mxu3_andib
++//extern v64u8 __builtin_mxu3_orv(v64u8, v64u8);
++#define _mx512_orv __builtin_mxu3_orv
++//extern v64u8 __builtin_mxu3_ornv(v64u8, v64u8);
++#define _mx512_ornv __builtin_mxu3_ornv
++//extern v64u8 __builtin_mxu3_orib(v64u8, unsigned int);
++#define _mx512_orib __builtin_mxu3_orib
++//extern v64u8 __builtin_mxu3_xorv(v64u8, v64u8);
++#define _mx512_xorv __builtin_mxu3_xorv
++//extern v64u8 __builtin_mxu3_xornv(v64u8, v64u8);
++#define _mx512_xornv __builtin_mxu3_xornv
++//extern v64u8 __builtin_mxu3_xorib(v64u8, unsigned int);
++#define _mx512_xorib __builtin_mxu3_xorib
++//extern v64u8 __builtin_mxu3_bselv(v64u8, v64u8, v64u8);
++#define _mx512_bselv __builtin_mxu3_bselv
++
++/* Floating Point Arithmetic */
++//extern v16f32 __builtin_mxu3_faddw(v16f32, v16f32);
++#define _mx512_faddw __builtin_mxu3_faddw
++//extern v16f32 __builtin_mxu3_fsubw(v16f32, v16f32);
++#define _mx512_fsubw __builtin_mxu3_fsubw
++//extern v16f32 __builtin_mxu3_fmulw(v16f32, v16f32);
++#define _mx512_fmulw __builtin_mxu3_fmulw
++//extern v16f32 __builtin_mxu3_fcmulrw(v16f32, v16f32);
++#define _mx512_fcmulrw __builtin_mxu3_fcmulrw
++//extern v16f32 __builtin_mxu3_fcmuliw(v16f32, v16f32);
++#define _mx512_fcmuliw __builtin_mxu3_fcmuliw
++//extern v16f32 __builtin_mxu3_fcaddw(v16f32, v16f32);
++#define _mx512_fcaddw __builtin_mxu3_fcaddw
++//extern v16f32 __builtin_mxu3_fmaxw(v16f32, v16f32);
++#define _mx512_fmaxw __builtin_mxu3_fmaxw
++//extern v16f32 __builtin_mxu3_fmaxaw(v16f32, v16f32);
++#define _mx512_fmaxaw __builtin_mxu3_fmaxaw
++//extern v16f32 __builtin_mxu3_fminw(v16f32, v16f32);
++#define _mx512_fminw __builtin_mxu3_fminw
++//extern v16f32 __builtin_mxu3_fminaw(v16f32, v16f32);
++#define _mx512_fminaw __builtin_mxu3_fminaw
++//extern v16i32 __builtin_mxu3_fclassw(v16f32);
++#define _mx512_fclassw __builtin_mxu3_fclassw
++//extern v16f32 __builtin_mxu3_fxas1w(v16f32);
++#define _mx512_fxas1w __builtin_mxu3_fxas1w
++//extern v16f32 __builtin_mxu3_fxas2w(v16f32);
++#define _mx512_fxas2w __builtin_mxu3_fxas2w
++//extern v16f32 __builtin_mxu3_fxas4w(v16f32);
++#define _mx512_fxas4w __builtin_mxu3_fxas4w
++//extern v16f32 __builtin_mxu3_fxas8w(v16f32);
++#define _mx512_fxas8w __builtin_mxu3_fxas8w
++
++/* Floating Point Compare */
++//extern v16i32 __builtin_mxu3_fceqw(v16f32, v16f32);
++#define _mx512_fceqw __builtin_mxu3_fceqw
++//extern v16i32 __builtin_mxu3_fclew(v16f32, v16f32);
++#define _mx512_fclew __builtin_mxu3_fclew
++//extern v16i32 __builtin_mxu3_fcltw(v16f32, v16f32);
++#define _mx512_fcltw __builtin_mxu3_fcltw
++//extern v16i32 __builtin_mxu3_fcorw(v16f32, v16f32);
++#define _mx512_fcorw __builtin_mxu3_fcorw
++
++/*Floating Point Conversion */
++//extern v16f32 __builtin_mxu3_ffsiw(v16i32);
++#define _mx512_ffsiw __builtin_mxu3_ffsiw
++//extern v16f32 __builtin_mxu3_ffuiw(v16u32);
++#define _mx512_ffuiw __builtin_mxu3_ffuiw
++//extern v16i32 __builtin_mxu3_ftsiw(v16f32);
++#define _mx512_ftsiw __builtin_mxu3_ftsiw
++//extern v16u32 __builtin_mxu3_ftuiw(v16f32);
++#define _mx512_ftuiw __builtin_mxu3_ftuiw
++//extern v16i32 __builtin_mxu3_frintw(v16f32);
++#define _mx512_frintw __builtin_mxu3_frintw
++//extern v16i32 __builtin_mxu3_ftruncsw(v16f32);
++#define _mx512_ftruncsw __builtin_mxu3_ftruncsw
++//extern v16u32 __builtin_mxu3_ftruncuw(v16f32);
++#define _mx512_ftruncuw __builtin_mxu3_ftruncuw
++
++/* Shift */
++//extern v64i8 __builtin_mxu3_sllb(v64i8, v64i8);
++#define _mx512_sllb __builtin_mxu3_sllb
++//extern v32i16 __builtin_mxu3_sllh(v32i16, v32i16);
++#define _mx512_sllh __builtin_mxu3_sllh
++//extern v16i32 __builtin_mxu3_sllw(v16i32, v16i32);
++#define _mx512_sllw __builtin_mxu3_sllw
++
++//extern v64i8 __builtin_mxu3_sllib(v64i8, unsigned int);
++#define _mx512_sllib __builtin_mxu3_sllib
++//extern v32i16 __builtin_mxu3_sllih(v32i16, unsigned int);
++#define _mx512_sllih __builtin_mxu3_sllih
++//extern v16i32 __builtin_mxu3_slliw(v16i32, unsigned int);
++#define _mx512_slliw __builtin_mxu3_slliw
++
++//extern v64i8 __builtin_mxu3_srab(v64i8, v64i8);
++#define _mx512_srab __builtin_mxu3_srab
++//extern v32i16 __builtin_mxu3_srah(v32i16, v32i16);
++#define _mx512_srah __builtin_mxu3_srah
++//extern v16i32 __builtin_mxu3_sraw(v16i32, v16i32);
++#define _mx512_sraw __builtin_mxu3_sraw
++
++//extern v64i8 __builtin_mxu3_sraib(v64i8, unsigned int);
++#define _mx512_sraib __builtin_mxu3_sraib
++//extern v32i16 __builtin_mxu3_sraih(v32i16, unsigned int);
++#define _mx512_sraih __builtin_mxu3_sraih
++//extern v16i32 __builtin_mxu3_sraiw(v16i32, unsigned int);
++#define _mx512_sraiw __builtin_mxu3_sraiw
++
++
++//extern v64i8 __builtin_mxu3_srarb(v64i8, v64i8);
++#define _mx512_srarb __builtin_mxu3_srarb
++//extern v32i16 __builtin_mxu3_srarh(v32i16, v32i16);
++#define _mx512_srarh __builtin_mxu3_srarh
++//extern v16i32 __builtin_mxu3_srarw(v16i32, v16i32);
++#define _mx512_srarw __builtin_mxu3_srarw
++
++//extern v64i8 __builtin_mxu3_srarib(v64i8, unsigned int);
++#define _mx512_srarib __builtin_mxu3_srarib
++//extern v32i16 __builtin_mxu3_srarih(v32i16, unsigned int);
++#define _mx512_srarih __builtin_mxu3_srarih
++//extern v16i32 __builtin_mxu3_srariw(v16i32, unsigned int);
++#define _mx512_srariw __builtin_mxu3_srariw
++
++//extern v64u8 __builtin_mxu3_srlb(v64u8, v64u8);
++#define _mx512_srlb __builtin_mxu3_srlb
++//extern v32u16 __builtin_mxu3_srlh(v32u16, v32u16);
++#define _mx512_srlh __builtin_mxu3_srlh
++//extern v16u32 __builtin_mxu3_srlw(v16u32, v16u32);
++#define _mx512_srlw __builtin_mxu3_srlw
++
++//extern v64u8 __builtin_mxu3_srlib(v64u8, unsigned int);
++#define _mx512_srlib __builtin_mxu3_srlib
++//extern v32u16 __builtin_mxu3_srlih(v32u16, unsigned int);
++#define _mx512_srlih __builtin_mxu3_srlih
++//extern v16u32 __builtin_mxu3_srliw(v16u32, unsigned int);
++#define _mx512_srliw __builtin_mxu3_srliw
++
++//extern v64u8 __builtin_mxu3_srlrb(v64u8, v64u8);
++#define _mx512_srlrb __builtin_mxu3_srlrb
++//extern v32u16 __builtin_mxu3_srlrh(v32u16, v32u16);
++#define _mx512_srlrh __builtin_mxu3_srlrh
++//extern v16u32 __builtin_mxu3_srlrw(v16u32, v16u32);
++#define _mx512_srlrw __builtin_mxu3_srlrw
++
++//extern v64u8 __builtin_mxu3_srlrib(v64u8, unsigned int);
++#define _mx512_srlrib __builtin_mxu3_srlrib
++//extern v32u16 __builtin_mxu3_srlrih(v32u16, unsigned int);
++#define _mx512_srlrih __builtin_mxu3_srlrih
++//extern v16u32 __builtin_mxu3_srlriw(v16u32, unsigned int);
++#define _mx512_srlriw __builtin_mxu3_srlriw
++
++/* Element Shuffle/Permute  */
++//extern v64i8 __builtin_mxu3_gt1bi(v64i8);
++#define _mx512_gt1bi __builtin_mxu3_gt1bi
++//extern v64i8 __builtin_mxu3_gt2bi(v64i8);
++#define _mx512_gt2bi __builtin_mxu3_gt2bi
++//extern v64i8 __builtin_mxu3_gt4bi(v64i8);
++#define _mx512_gt4bi __builtin_mxu3_gt4bi
++//extern v64i8 __builtin_mxu3_gtb(v64i8);
++#define _mx512_gtb __builtin_mxu3_gtb
++//extern v64i8 __builtin_mxu3_gth(v64i8);
++#define _mx512_gth __builtin_mxu3_gth
++
++//extern v16i32 __builtin_mxu3_gt2w(v16i32, unsigned int, v16i32, unsigned int);
++#define _mx512_gt2w __builtin_mxu3_gt2w
++//extern v16i32 __builtin_mxu3_gt4w(v16i32, unsigned int, v16i32, unsigned int);
++#define _mx512_gt4w __builtin_mxu3_gt4w
++//extern v16i32 __builtin_mxu3_gt8w(v16i32, unsigned int, v16i32, unsigned int);
++#define _mx512_gt8w __builtin_mxu3_gt8w
++//extern v8i64 __builtin_mxu3_gt2d(v8i64, unsigned int, v8i64, unsigned int);
++#define _mx512_gt2d __builtin_mxu3_gt2d
++//extern v8i64 __builtin_mxu3_gt4d(v8i64, unsigned int, v8i64, unsigned int);
++#define _mx512_gt4d __builtin_mxu3_gt4d
++//extern v4i128 __builtin_mxu3_gt2q(v4i128, unsigned int, v4i128, unsigned int);
++#define _mx512_gt2q __builtin_mxu3_gt2q
++
++//extern v8u64 __builtin_mxu3_extuwll(v8u64, v16u32, unsigned int);
++#define _mx512_extuwll __builtin_mxu3_extuwll
++//extern v8u64 __builtin_mxu3_extuwlh(v8u64, v16u32, unsigned int);
++#define _mx512_extuwlh __builtin_mxu3_extuwlh
++//extern v8u64 __builtin_mxu3_extuwhl(v8u64, v16u32, unsigned int);
++#define _mx512_extuwhl __builtin_mxu3_extuwhl
++//extern v8u64 __builtin_mxu3_extuwhh(v8u64, v16u32, unsigned int);
++#define _mx512_extuwhh __builtin_mxu3_extuwhh
++
++//extern v4u128 __builtin_mxu3_extudll(v4u128, v8u64, unsigned int);
++#define _mx512_extudll __builtin_mxu3_extudll
++//extern v4u128 __builtin_mxu3_extudlh(v4u128, v8u64, unsigned int);
++#define _mx512_extudlh __builtin_mxu3_extudlh
++//extern v4u128 __builtin_mxu3_extudhl(v4u128, v8u64, unsigned int);
++#define _mx512_extudhl __builtin_mxu3_extudhl
++//extern v4u128 __builtin_mxu3_extudhh(v4u128, v8u64, unsigned int);
++#define _mx512_extudhh __builtin_mxu3_extudhh
++
++//extern v4u128 __builtin_mxu3_extuqll(v4u128, v4u128, unsigned int);
++#define _mx512_extuqll __builtin_mxu3_extuqll
++//extern v4u128 __builtin_mxu3_extuqlh(v4u128, v4u128, unsigned int);
++#define _mx512_extuqlh __builtin_mxu3_extuqlh
++//extern v4u128 __builtin_mxu3_extuqhl(v4u128, v4u128, unsigned int);
++#define _mx512_extuqhl __builtin_mxu3_extuqhl
++//extern v4u128 __builtin_mxu3_extuqhh(v4u128, v4u128, unsigned int);
++#define _mx512_extuqhh __builtin_mxu3_extuqhh
++
++//extern v4u128 __builtin_mxu3_extuoll(v4u128, v4u128, unsigned int);
++#define _mx512_extuoll __builtin_mxu3_extuoll
++//extern v4u128 __builtin_mxu3_extuolh(v4u128, v4u128, unsigned int);
++#define _mx512_extuolh __builtin_mxu3_extuolh
++//extern v4u128 __builtin_mxu3_extuohl(v4u128, v4u128, unsigned int);
++#define _mx512_extuohl __builtin_mxu3_extuohl
++//extern v4u128 __builtin_mxu3_extuohh(v4u128, v4u128, unsigned int);
++#define _mx512_extuohh __builtin_mxu3_extuohh
++
++//extern v64u8 __builtin_mxu3_extu1bil(v64u8);
++#define _mx512_extu1bil __builtin_mxu3_extu1bil
++//extern v64u8 __builtin_mxu3_extu2bil(v64u8);
++#define _mx512_extu2bil __builtin_mxu3_extu2bil
++//extern v64u8 __builtin_mxu3_extu4bil(v64u8);
++#define _mx512_extu4bil __builtin_mxu3_extu4bil
++//extern v32u16 __builtin_mxu3_extubl(v64u8);
++#define _mx512_extubl __builtin_mxu3_extubl
++//extern v16u32 __builtin_mxu3_extuhl(v32u16);
++#define _mx512_extuhl __builtin_mxu3_extuhl
++
++//extern v64u8 __builtin_mxu3_extu1bih(v64u8);
++#define _mx512_extu1bih __builtin_mxu3_extu1bih
++//extern v64u8 __builtin_mxu3_extu2bih(v64u8);
++#define _mx512_extu2bih __builtin_mxu3_extu2bih
++//extern v64u8 __builtin_mxu3_extu4bih(v64u8);
++#define _mx512_extu4bih __builtin_mxu3_extu4bih
++//extern v32u16 __builtin_mxu3_extubh(v64u8);
++#define _mx512_extubh __builtin_mxu3_extubh
++//extern v16u32 __builtin_mxu3_extuhh(v32u16);
++#define _mx512_extuhh __builtin_mxu3_extuhh
++
++//extern v64i8 __builtin_mxu3_exts1bil(v64i8);
++#define _mx512_exts1bil __builtin_mxu3_exts1bil
++//extern v64i8 __builtin_mxu3_exts2bil(v64i8);
++#define _mx512_exts2bil __builtin_mxu3_exts2bil
++//extern v64i8 __builtin_mxu3_exts4bil(v64i8);
++#define _mx512_exts4bil __builtin_mxu3_exts4bil
++//extern v32i16 __builtin_mxu3_extsbl(v64i8);
++#define _mx512_extsbl __builtin_mxu3_extsbl
++//extern v16i32 __builtin_mxu3_extshl(v32i16);
++#define _mx512_extshl __builtin_mxu3_extshl
++
++//extern v64i8 __builtin_mxu3_exts1bih(v64i8);
++#define _mx512_exts1bih __builtin_mxu3_exts1bih
++//extern v64i8 __builtin_mxu3_exts2bih(v64i8);
++#define _mx512_exts2bih __builtin_mxu3_exts2bih
++//extern v64i8 __builtin_mxu3_exts4bih(v64i8);
++#define _mx512_exts4bih __builtin_mxu3_exts4bih
++//extern v32i16 __builtin_mxu3_extsbh(v64i8);
++#define _mx512_extsbh __builtin_mxu3_extsbh
++//extern v16i32 __builtin_mxu3_extshh(v32i16);
++#define _mx512_extshh __builtin_mxu3_extshh
++
++//extern v16u32 __builtin_mxu3_extu3bw(v64u8);
++#define _mx512_extu3bw __builtin_mxu3_extu3bw
++
++//extern v64u8 __builtin_mxu3_repib(v64u8, int);
++#define _mx512_repib __builtin_mxu3_repib
++//extern v32u16 __builtin_mxu3_repih(v32u16, int);
++#define _mx512_repih __builtin_mxu3_repih
++//extern v16u32 __builtin_mxu3_repiw(v16u32, int);
++#define _mx512_repiw __builtin_mxu3_repiw
++//extern v8u64 __builtin_mxu3_repid(v8u64, int);
++#define _mx512_repid __builtin_mxu3_repid
++//extern v4u128 __builtin_mxu3_repiq(v4u128, int);
++#define _mx512_repiq __builtin_mxu3_repiq
++//extern v4u128 __builtin_mxu3_repio(v4u128, int);
++#define _mx512_repio __builtin_mxu3_repio
++
++//extern v16u32 __builtin_mxu3_movw(v16u32, int, v16u32, int);
++#define _mx512_movw __builtin_mxu3_movw
++//extern v8u64 __builtin_mxu3_movd(v8u64, int, v8u64, int);
++#define _mx512_movd __builtin_mxu3_movd
++//extern v4u128 __builtin_mxu3_movq(v4u128, int, v4u128, int);
++#define _mx512_movq __builtin_mxu3_movq
++//extern v2u256 __builtin_mxu3_movo(v2u256, int, v2u256, int);
++#define _mx512_movo __builtin_mxu3_movo
++
++//extern v16u32 __builtin_mxu3_shufw2(v16u32);
++#define _mx512_shufw2 __builtin_mxu3_shufw2
++//extern v16u32 __builtin_mxu3_shufw4(v16u32);
++#define _mx512_shufw4 __builtin_mxu3_shufw4
++//extern v16u32 __builtin_mxu3_shufw8(v16u32);
++#define _mx512_shufw8 __builtin_mxu3_shufw8
++//extern v8u64 __builtin_mxu3_shufd2(v8u64);
++#define _mx512_shufd2 __builtin_mxu3_shufd2
++//extern v8u64 __builtin_mxu3_shufd4(v8u64);
++#define _mx512_shufd4 __builtin_mxu3_shufd4
++//extern v4u128 __builtin_mxu3_shufq2(v4u128);
++#define _mx512_shufq2 __builtin_mxu3_shufq2
++
++//extern v16u32 __builtin_mxu3_gshufw(v16u32, v16u32, v16u32, int);
++#define _mx512_gshufw __builtin_mxu3_gshufw
++
++#if defined(__mips_mxu3_1) /*mxu3.1*/
++	//extern v64u8 __builtin_mxu3_gshufwb_1(v64u8, v16u32, v64u8, int);
++	#define _mx512_gshufwb_1 __builtin_mxu3_gshufwb_1
++	//extern v64u8 __builtin_mxu3_gshufwb_2(v64u8, v16u32, v64u8, int);
++	#define _mx512_gshufwb_2 __builtin_mxu3_gshufwb_2
++	//extern v64u8 __builtin_mxu3_gshufvb(v64u8, v64u8, v64u8);
++	#define _mx512_gshufvb __builtin_mxu3_gshufvb
++#else /*mxu3*/
++	extern v64u8 __builtin_mxu3_gshufwb(v64u8, v16u32, v64u8) __attribute__((__deprecated__));
++	#define _mx512_gshufwb __builtin_mxu3_gshufwb
++	extern v64u8 __builtin_mxu3_gshufb(v64u8, v64u8, v64u8) __attribute__((__deprecated__));
++	#define _mx512_gshufb __builtin_mxu3_gshufb
++	extern v32u16 __builtin_mxu3_gshufwh(v32u16, v16u32, v32u16) __attribute__((__deprecated__));
++	#define _mx512_gshufwh __builtin_mxu3_gshufwh
++	extern v32u16 __builtin_mxu3_gshufh(v32u16, v32u16, v32u16) __attribute__((__deprecated__));
++    #define _mx512_gshufh __builtin_mxu3_gshufh
++#endif
++
++//extern v64u8 __builtin_mxu3_ilve2bi(v64u8, v64u8);
++#define _mx512_ilve2bi __builtin_mxu3_ilve2bi
++//extern v64u8 __builtin_mxu3_ilve4bi(v64u8, v64u8);
++#define _mx512_ilve4bi __builtin_mxu3_ilve4bi
++//extern v64u8 __builtin_mxu3_ilveb(v64u8, v64u8);
++#define _mx512_ilveb __builtin_mxu3_ilveb
++//extern v32u16 __builtin_mxu3_ilveh(v32u16, v32u16);
++#define _mx512_ilveh __builtin_mxu3_ilveh
++//extern v16u32 __builtin_mxu3_ilvew(v16u32, v16u32);
++#define _mx512_ilvew __builtin_mxu3_ilvew
++//extern v8u64 __builtin_mxu3_ilved(v8u64, v8u64);
++#define _mx512_ilved __builtin_mxu3_ilved
++//extern v4u128 __builtin_mxu3_ilveq(v4u128, v4u128);
++#define _mx512_ilveq __builtin_mxu3_ilveq
++//extern v4u128 __builtin_mxu3_ilveo(v4u128, v4u128);
++#define _mx512_ilveo __builtin_mxu3_ilveo
++
++//extern v64u8 __builtin_mxu3_ilvo2bi(v64u8, v64u8);
++#define _mx512_ilvo2bi __builtin_mxu3_ilvo2bi
++//extern v64u8 __builtin_mxu3_ilvo4bi(v64u8, v64u8);
++#define _mx512_ilvo4bi __builtin_mxu3_ilvo4bi
++//extern v64u8 __builtin_mxu3_ilvob(v64u8, v64u8);
++#define _mx512_ilvob __builtin_mxu3_ilvob
++//extern v32u16 __builtin_mxu3_ilvoh(v32u16, v32u16);
++#define _mx512_ilvoh __builtin_mxu3_ilvoh
++//extern v16u32 __builtin_mxu3_ilvow(v16u32, v16u32);
++#define _mx512_ilvow __builtin_mxu3_ilvow
++//extern v8u64 __builtin_mxu3_ilvod(v8u64, v8u64);
++#define _mx512_ilvod __builtin_mxu3_ilvod
++//extern v4u128 __builtin_mxu3_ilvoq(v4u128, v4u128);
++#define _mx512_ilvoq __builtin_mxu3_ilvoq
++//extern v4u128 __builtin_mxu3_ilvoo(v4u128, v4u128);
++#define _mx512_ilvoo __builtin_mxu3_ilvoo
++
++//extern v64u8 __builtin_mxu3_bshli(v64u8, int);
++#define _mx512_bshli __builtin_mxu3_bshli
++//extern v64u8 __builtin_mxu3_bshri(v64u8, int);
++#define _mx512_bshri __builtin_mxu3_bshri
++//extern v64u8 __builtin_mxu3_bshl(v64u8, v64u8);
++#define _mx512_bshl __builtin_mxu3_bshl
++//extern v64u8 __builtin_mxu3_bshr(v64u8, v64u8);
++#define _mx512_bshr __builtin_mxu3_bshr
++
++/* Register Load and Misc.  */
++//extern int __builtin_mxu3_mtcpuw(v1i32);
++#define _mx512_mtcpuw __builtin_mxu3_mtcpuw
++//extern v1i32 __builtin_mxu3_mfcpuw(int);
++#define _mx512_mfcpuw __builtin_mxu3_mfcpuw
++//extern float __builtin_mxu3_mtfpuw(v1i32);
++#define _mx512_mtfpuw __builtin_mxu3_mtfpuw
++//extern v1i32 __builtin_mxu3_mffpuw(float);
++#define _mx512_mffpuw __builtin_mxu3_mffpuw
++
++//extern void __builtin_mxu3_ctcmxu(int, int);
++#define _mx512_ctcmxu __builtin_mxu3_ctcmxu
++//extern int __builtin_mxu3_cfcmxu(int);
++#define _mx512_cfcmxu __builtin_mxu3_cfcmxu
++
++//extern v16i32 __builtin_mxu3_sumz(int);
++#define _mx512_sumz __builtin_mxu3_sumz
++/*Ignore: mfsum.  */
++//extern v16i32 __builtin_mxu3_mfsumz(v16i32 *);
++#define _mx512_mfsumz __builtin_mxu3_mfsumz
++/*Ignore: mtsum.  */
++//extern v16i32 __builtin_mxu3_mxsum(v16i32, v16i32 *);
++#define _mx512_mxsum __builtin_mxu3_mxsum
++
++//extern v32i16 __builtin_mxu3_lih(int);
++#define _mx512_lih __builtin_mxu3_lih
++//extern v16i32 __builtin_mxu3_liw(int);
++#define _mx512_liw __builtin_mxu3_liw
++//extern v32i16 __builtin_mxu3_liwh(v32i16, int);
++#define _mx512_liwh __builtin_mxu3_liwh
++//extern v1i32 __builtin_mxu3_liwr(int);
++#define _mx512_liwr __builtin_mxu3_liwr
++//extern v16i32 __builtin_mxu3_cmvw(v16i32, v16i32, v16i32, int);
++#define _mx512_cmvw __builtin_mxu3_cmvw
++//extern v32i16 __builtin_mxu3_pmaph(v32i16, v32i16);
++#define _mx512_pmaph __builtin_mxu3_pmaph
++//extern v16i32 __builtin_mxu3_pmapw(v16i32, v16i32);
++#define _mx512_pmapw __builtin_mxu3_pmapw
++
++/* Load / Store.  */
++
++//extern v16u32 __builtin_mxu3_law(v16u32, int, _m32u_ptr *, int);
++#define _mx512_law __builtin_mxu3_law
++//extern v8u64 __builtin_mxu3_lad(v8u64, int, _m64u_ptr *, int);
++#define _mx512_lad __builtin_mxu3_lad
++//extern v4u128 __builtin_mxu3_laq(v4u128, int, _m128u_ptr *, int);
++#define _mx512_laq __builtin_mxu3_laq
++//extern v2u256 __builtin_mxu3_lao(v2u256, int, _m256u_ptr *, int);
++#define _mx512_lao __builtin_mxu3_lao
++
++//extern void __builtin_mxu3_saw(v16u32, int, _m32u_ptr *, int);
++#define _mx512_saw __builtin_mxu3_saw
++//extern void __builtin_mxu3_sad(v8u64, int, _m64u_ptr *, int);
++#define _mx512_sad __builtin_mxu3_sad
++//extern void __builtin_mxu3_saq(v4u128, int, _m128u_ptr *, int);
++#define _mx512_saq __builtin_mxu3_saq
++//extern void __builtin_mxu3_sao(v2u256, int, _m256u_ptr *, int);
++#define _mx512_sao __builtin_mxu3_sao
++
++//extern v16u32 __builtin_mxu3_law2b(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law2b __builtin_mxu3_law2b
++//extern v16u32 __builtin_mxu3_law2h(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law2h __builtin_mxu3_law2h
++//extern v16u32 __builtin_mxu3_law4b(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law4b __builtin_mxu3_law4b
++//extern v16u32 __builtin_mxu3_law4h(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law4h __builtin_mxu3_law4h
++//extern v16u32 __builtin_mxu3_law8b(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law8b __builtin_mxu3_law8b
++//extern v16u32 __builtin_mxu3_law8h(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law8h __builtin_mxu3_law8h
++//extern v16u32 __builtin_mxu3_law16b(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law16b __builtin_mxu3_law16b
++//extern v16u32 __builtin_mxu3_law16h(v16u32, int, int, _m32u_ptr *);
++#define _mx512_law16h __builtin_mxu3_law16h
++
++//extern v8u64 __builtin_mxu3_lad2b(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad2b __builtin_mxu3_lad2b
++//extern v8u64 __builtin_mxu3_lad2h(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad2h __builtin_mxu3_lad2h
++//extern v8u64 __builtin_mxu3_lad2w(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad2w __builtin_mxu3_lad2w
++//extern v8u64 __builtin_mxu3_lad4b(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad4b __builtin_mxu3_lad4b
++//extern v8u64 __builtin_mxu3_lad4h(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad4h __builtin_mxu3_lad4h
++//extern v8u64 __builtin_mxu3_lad4w(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad4w __builtin_mxu3_lad4w
++//extern v8u64 __builtin_mxu3_lad8b(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad8b __builtin_mxu3_lad8b
++//extern v8u64 __builtin_mxu3_lad8h(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad8h __builtin_mxu3_lad8h
++//extern v8u64 __builtin_mxu3_lad8w(v8u64, int, int, _m64u_ptr *);
++#define _mx512_lad8w __builtin_mxu3_lad8w
++
++//extern v4u128 __builtin_mxu3_laq2b(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq2b __builtin_mxu3_laq2b
++//extern v4u128 __builtin_mxu3_laq2h(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq2h __builtin_mxu3_laq2h
++//extern v4u128 __builtin_mxu3_laq2w(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq2w __builtin_mxu3_laq2w
++//extern v4u128 __builtin_mxu3_laq2d(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq2d __builtin_mxu3_laq2d
++//extern v4u128 __builtin_mxu3_laq4b(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq4b __builtin_mxu3_laq4b
++//extern v4u128 __builtin_mxu3_laq4h(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq4h __builtin_mxu3_laq4h
++//extern v4u128 __builtin_mxu3_laq4w(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq4w __builtin_mxu3_laq4w
++//extern v4u128 __builtin_mxu3_laq4d(v4u128, int, int, _m128u_ptr *);
++#define _mx512_laq4d __builtin_mxu3_laq4d
++
++//extern v2u256 __builtin_mxu3_lao2b(v2u256, int, int, _m256u_ptr  *);
++#define _mx512_lao2b __builtin_mxu3_lao2b
++//extern v2u256 __builtin_mxu3_lao2h(v2u256, int, int, _m256u_ptr  *);
++#define _mx512_lao2h __builtin_mxu3_lao2h
++//extern v2u256 __builtin_mxu3_lao2w(v2u256, int, int, _m256u_ptr  *);
++#define _mx512_lao2w __builtin_mxu3_lao2w
++//extern v2u256 __builtin_mxu3_lao2d(v2u256, int, int, _m256u_ptr  *);
++#define _mx512_lao2d __builtin_mxu3_lao2d
++//extern v2u256 __builtin_mxu3_lao2q(v2u256, int, int, _m256u_ptr  *);
++#define _mx512_lao2q __builtin_mxu3_lao2q
++
++//extern void __builtin_mxu3_sad2w(v8u64, int, int, _m64u_ptr *);
++#define _mx512_sad2w __builtin_mxu3_sad2w
++//extern void __builtin_mxu3_sad4w(v8u64, int, int, _m64u_ptr *);
++#define _mx512_sad4w __builtin_mxu3_sad4w
++//extern void __builtin_mxu3_sad8w(v8u64, int, int, _m64u_ptr *);
++#define _mx512_sad8w __builtin_mxu3_sad8w
++
++//extern void __builtin_mxu3_saq2w(v4u128, int, int, _m128u_ptr *);
++#define _mx512_saq2w __builtin_mxu3_saq2w
++//extern void __builtin_mxu3_saq2d(v4u128, int, int, _m128u_ptr *);
++#define _mx512_saq2d __builtin_mxu3_saq2d
++//extern void __builtin_mxu3_saq4w(v4u128, int, int, _m128u_ptr *);
++#define _mx512_saq4w __builtin_mxu3_saq4w
++//extern void __builtin_mxu3_saq4d(v4u128, int, int, _m128u_ptr *);
++#define _mx512_saq4d __builtin_mxu3_saq4d
++
++//extern void __builtin_mxu3_sao2w(v2u256, int, int, _m256u_ptr *);
++#define _mx512_sao2w __builtin_mxu3_sao2w
++//extern void __builtin_mxu3_sao2d(v2u256, int, int, _m256u_ptr *);
++#define _mx512_sao2d __builtin_mxu3_sao2d
++//extern void __builtin_mxu3_sao2q(v2u256, int, int, _m256u_ptr *);
++#define _mx512_sao2q __builtin_mxu3_sao2q
++
++/* Neural Networks Accelerate.  */
++//extern void __builtin_mxu3_nnrwr(v1i32,  int);
++#define _mx512_nnrwr __builtin_mxu3_nnrwr
++//extern v16i32 __builtin_mxu3_nnrrd(int);
++#define _mx512_nnrrd __builtin_mxu3_nnrrd
++//extern void __builtin_mxu3_nndwr(v16i32,  int);
++#define _mx512_nndwr __builtin_mxu3_nndwr
++//extern v16i32 __builtin_mxu3_nndrd(int);
++#define _mx512_nndrd __builtin_mxu3_nndrd
++//extern void __builtin_mxu3_nncmd(int);
++#define _mx512_nncmd __builtin_mxu3_nncmd
++//extern void __builtin_mxu3_nnmac(v1i32,  int);
++#define _mx512_nnmac __builtin_mxu3_nnmac
++
++#endif /* __clang__ */
++#endif /* defined(__mips_mxu3) */
++#endif /* _MXU3_H */
