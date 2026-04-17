@@ -17,8 +17,9 @@ fail_list=()
 
 # threshold: bench_name => "metric_name min_value"
 declare -A THRESHOLDS=(
-    [chain]="speedup 5.0"      # MXU2 chained add ≥5× scalar
-    [chacha]="mb_per_sec 15.0" # ChaCha20 ≥15 MB/s on T20 (10× margin over Scalar)
+    [chain]="speedup 5.0"        # MXU2 chained add ≥5× scalar
+    [chacha]="mb_per_sec 15.0"   # ChaCha20 ≥15 MB/s on T20 (shuffle-heavy)
+    [image]="speedup 2.0"        # Saturating byte blend ≥2× scalar
 )
 
 for src in bench_*.c; do

@@ -85,6 +85,65 @@ elemr='
 int f(v4i32 a) { return a[2]; }'
 check "$elemr" "-mmxu2 -O2" "mtcpusw" 1 "elemr: 1 mtcpusw"
 
+# --- Mixed RTL paths in one chain (the ChaCha class).
+# 7 distinct ops in a row should produce 7 distinct MXU2 insns, no
+# spilling. If reload regresses, this will balloon.
+mixed='
+#include <mxu2.h>
+v4i32 f(v4i32 a, v4i32 b, v4i32 c, v4i32 sh) {
+    v4i32 r = __builtin_mxu2_add_w(a, b);
+    r = __builtin_mxu2_sub_w(r, c);
+    r = __builtin_mxu2_sll_w(r, sh);
+    r = __builtin_mxu2_sra_w(r, sh);
+    r = __builtin_mxu2_maxs_w(r, a);
+    r = __builtin_mxu2_mins_w(r, b);
+    r = (v4i32)__builtin_mxu2_xorv((v16i8)r, (v16i8)c);
+    return r;
+}'
+check "$mixed" "-mmxu2 -O2" "(insfcpuw|mtcpusw)" 0 "mixed: zero element ops"
+
+# --- High register pressure (12 simultaneously-live V4SI).
+# Should NOT ICE under NREGS=1 (32 slots). If NREGS=4 (only 8 slots),
+# this overflows and we'd see spills.
+pressure='
+#include <mxu2.h>
+void f(v4i32 *out, const v4i32 *src) {
+    v4i32 v0=src[0], v1=src[1], v2=src[2], v3=src[3];
+    v4i32 v4=src[4], v5=src[5], v6=src[6], v7=src[7];
+    v4i32 v8=src[8], v9=src[9], v10=src[10], v11=src[11];
+    v4i32 r = __builtin_mxu2_add_w(v0, v1);
+    r=__builtin_mxu2_add_w(r,v2); r=__builtin_mxu2_add_w(r,v3);
+    r=__builtin_mxu2_add_w(r,v4); r=__builtin_mxu2_add_w(r,v5);
+    r=__builtin_mxu2_add_w(r,v6); r=__builtin_mxu2_add_w(r,v7);
+    r=__builtin_mxu2_add_w(r,v8); r=__builtin_mxu2_add_w(r,v9);
+    r=__builtin_mxu2_add_w(r,v10); r=__builtin_mxu2_add_w(r,v11);
+    *out = r;
+}'
+check "$pressure" "-mmxu2 -O2" "^[[:space:]]+addw" 11 "pressure: 11 addw"
+check "$pressure" "-mmxu2 -O2" "(insfcpuw|mtcpusw)" 0 "pressure: zero element ops"
+
+# --- Inline asm with =q constraint: backend must accept COP2 in asm.
+asm='
+#include <mxu2.h>
+v4i32 f(v4i32 a, v4i32 b) {
+    v4i32 r;
+    __asm__("addw\t%w0,%w1,%w2" : "=q"(r) : "q"(a), "q"(b));
+    return r;
+}'
+check "$asm" "-mmxu2 -O2" "addw" 1 "inline_asm: 1 addw"
+
+# --- Vector live across function call: caller-save handling.
+calltest='
+#include <mxu2.h>
+extern int sink(int);
+v4i32 f(v4i32 a, v4i32 b) {
+    v4i32 r = __builtin_mxu2_add_w(a, b);
+    sink(0);
+    return __builtin_mxu2_add_w(r, a);
+}'
+# r must be saved across the call. Without proper caller-save, would corrupt.
+check "$calltest" "-mmxu2 -O2" "^[[:space:]]+addw" 2 "call_across: 2 addw"
+
 total=$((pass+fail))
 echo "Layer B: $pass/$total passed"
 [ $fail -eq 0 ] || printf "  FAIL %s\n" "${fail_list[@]}"

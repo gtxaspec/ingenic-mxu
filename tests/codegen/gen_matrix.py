@@ -113,15 +113,186 @@ void f({typ} *out, const {typ} *in, int rows, int cols) {{
 }}
 """
 
+def pat_mixed_ops(mode, typ, elem, n, add, splat):
+    """Dense chain mixing 7 distinct RTL patterns: add, sub, sll, sra,
+    smax, smin, plus a whole-vector logic op (forces mode reinterpret).
+    Catches reload bugs that only appear when many RTL paths are alive
+    in one insn stream (the ChaCha20 pattern)."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    return f"""\
+#include <mxu2.h>
+{typ} f({typ} a, {typ} b, {typ} c, {typ} sh) {{
+    {typ} r = __builtin_mxu2_add_{suf}(a, b);
+    r = __builtin_mxu2_sub_{suf}(r, c);
+    r = __builtin_mxu2_sll_{suf}(r, sh);
+    r = __builtin_mxu2_sra_{suf}(r, sh);
+    r = __builtin_mxu2_maxs_{suf}(r, a);
+    r = __builtin_mxu2_mins_{suf}(r, b);
+    r = ({typ})__builtin_mxu2_xorv((v16i8)r, (v16i8)c);
+    return r;
+}}
+"""
+
+def pat_branch(mode, typ, elem, n, add, splat):
+    """Vector-zero scalar branch — bnez1q lowering. Always takes
+    v16i8 regardless of mode iter, so emit one canonical version."""
+    if mode != "v16i8": return None
+    return """\
+#include <mxu2.h>
+int f(v16i8 a) { return __builtin_mxu2_bnez1q((unsigned char __attribute__((vector_size(16))))a); }
+"""
+
+def pat_high_pressure(mode, typ, elem, n, add, splat):
+    """Force 12+ simultaneously-live vector pseudos. Exercises real
+    spill paths (not just register reuse). With NREGS=1 should fit; if
+    NREGS regresses to 4 only 8 slots → guaranteed spill."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    loads = "\n    ".join(f"{typ} v{i} = src[{i}];" for i in range(12))
+    chain = " + ".join(f"v{i}" for i in range(12))
+    # Build the chain via builtin to ensure MXU2 ops, not C operator
+    add_chain = f"v0"
+    for i in range(1, 12):
+        add_chain = f"__builtin_mxu2_add_{suf}({add_chain}, v{i})"
+    return f"""\
+#include <mxu2.h>
+void f({typ} *out, const {typ} *src) {{
+    {loads}
+    *out = {add_chain};
+}}
+"""
+
+def pat_call_across(mode, typ, elem, n, add, splat):
+    """Vector live across a function call. Exercises caller-save
+    handling for COP2 regs."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    return f"""\
+#include <mxu2.h>
+extern int sink(int);
+{typ} f({typ} a, {typ} b, int x) {{
+    {typ} r = __builtin_mxu2_add_{suf}(a, b);
+    int y = sink(x);
+    return __builtin_mxu2_add_{suf}(r, ({typ}){{y}});
+}}
+"""
+
+def pat_conditional(mode, typ, elem, n, add, splat):
+    """Vector value selected by scalar branch. Exercises phi/copy
+    handling on COP2 regs."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    return f"""\
+#include <mxu2.h>
+{typ} f({typ} a, {typ} b, int cond) {{
+    {typ} r = cond ? __builtin_mxu2_add_{suf}(a, b)
+                   : __builtin_mxu2_sub_{suf}(a, b);
+    return __builtin_mxu2_add_{suf}(r, a);
+}}
+"""
+
+def pat_widen(mode, typ, elem, n, add, splat):
+    """Mode reinterpret across builtins (v4i32 viewed as v8i16 etc).
+    Triggers mips_can_change_mode_class + secondary reload paths."""
+    if "f" in elem: return None
+    if mode == "v16i8": return None  # nothing narrower
+    return f"""\
+#include <mxu2.h>
+v16i8 f({typ} a) {{
+    v16i8 b = (v16i8)a;
+    return __builtin_mxu2_add_b(b, b);
+}}
+"""
+
+def pat_compare(mode, typ, elem, n, add, splat):
+    """Vector compare result fed back into arith. Tests cmp builtins
+    plus the bool-mask -> vector path."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    return f"""\
+#include <mxu2.h>
+{typ} f({typ} a, {typ} b) {{
+    {typ} mask = __builtin_mxu2_ceq_{suf}(a, b);
+    return __builtin_mxu2_add_{suf}(mask, a);
+}}
+"""
+
+
+def pat_inline_asm(mode, typ, elem, n, add, splat):
+    """Inline asm with =q constraint. Pin nothing, just verify the
+    backend accepts COP2 regs as asm operands."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    return f"""\
+#include <mxu2.h>
+{typ} f({typ} a, {typ} b) {{
+    {typ} r;
+    __asm__("addw\\t%w0,%w1,%w2" : "=q"(r) : "q"(a), "q"(b));
+    return r;
+}}
+"""
+
+def pat_autovec(mode, typ, elem, n, add, splat):
+    """Canonical autovec loop. Today GCC won't pick MXU2 (patterns
+    named mxu2_*), but a future fix might. Test compiles either way."""
+    if "f" in elem and "double" in elem: return None  # avoid f64 idioms
+    return f"""\
+#include <mxu2.h>
+void f({elem} *c, const {elem} *a, const {elem} *b, int n) {{
+    for (int i = 0; i < n; i++) c[i] = a[i] + b[i];
+}}
+"""
+
+def pat_globals(mode, typ, elem, n, add, splat):
+    """Global vector + struct member. Exercises BSS alignment and
+    static init paths."""
+    if "f" in elem: return None
+    suf_map = {"v16i8": "b", "v8i16": "h", "v4i32": "w", "v2i64": "d"}
+    if mode not in suf_map: return None
+    suf = suf_map[mode]
+    return f"""\
+#include <mxu2.h>
+static {typ} g_a, g_b;
+struct S {{ {typ} x; int pad; {typ} y; }};
+static struct S g_s;
+void f(void) {{
+    g_s.x = __builtin_mxu2_add_{suf}(g_a, g_b);
+    g_s.y = __builtin_mxu2_sub_{suf}(g_s.x, g_a);
+}}
+"""
+
 PATTERNS = {
-    "arg":       pat_arg,
-    "retptr":    pat_ret_ptr,
-    "splat":     pat_splat,
-    "shuffle":   pat_shuffle_const,
-    "idx_read":  pat_idx_read,
-    "idx_write": pat_idx_write,
-    "big_chain": pat_big_chain,
-    "nested":    pat_nested_loop,
+    "arg":            pat_arg,
+    "retptr":         pat_ret_ptr,
+    "splat":          pat_splat,
+    "shuffle":        pat_shuffle_const,
+    "idx_read":       pat_idx_read,
+    "idx_write":      pat_idx_write,
+    "big_chain":      pat_big_chain,
+    "nested":         pat_nested_loop,
+    "mixed_ops":      pat_mixed_ops,
+    "widen":          pat_widen,
+    "compare":        pat_compare,
+    "branch":         pat_branch,
+    "inline_asm":     pat_inline_asm,
+    "autovec":        pat_autovec,
+    "globals":        pat_globals,
+    "high_pressure":  pat_high_pressure,
+    "call_across":    pat_call_across,
+    "conditional":    pat_conditional,
 }
 
 OPTS = ["-O0", "-O2", "-O3"]
