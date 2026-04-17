@@ -295,7 +295,7 @@ PATTERNS = {
     "conditional":    pat_conditional,
 }
 
-OPTS = ["-O0", "-O2", "-O3"]
+OPTS = ["-O0", "-O1", "-O2", "-O3", "-Os"]
 
 def main(outdir):
     os.makedirs(outdir, exist_ok=True)

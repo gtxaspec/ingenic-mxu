@@ -20,6 +20,13 @@ declare -A THRESHOLDS=(
     [chain]="speedup 5.0"        # MXU2 chained add ≥5× scalar
     [chacha]="mb_per_sec 15.0"   # ChaCha20 ≥15 MB/s on T20 (shuffle-heavy)
     [image]="speedup 2.0"        # Saturating byte blend ≥2× scalar
+    # matmul + dotp: not throughput tests — they exercise mul + widen
+    # patterns. MXU2 currently slower than scalar here (splat-from-scalar
+    # builds via 4 inserts; element widening via vec_extract). Threshold
+    # is "runs at all" / produces nonzero positive time — protects against
+    # outright regression to 0 (DCE) or negative (overflow).
+    [matmul]="speedup 0.5"
+    [dotp]="speedup 0.5"
 )
 
 for src in bench_*.c; do
