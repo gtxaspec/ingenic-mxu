@@ -1,0 +1,12 @@
+# MXU2 toolchain v21 baseline performance on T20 (192.0.2.53).
+# Format: bench_name metric_name value
+# run_bench.sh fails if any actual value drops > REGRESSION_PCT (default 8%) below baseline.
+# Use BASELINE_UPDATE=1 to overwrite this file with new measurements.
+box5x5 speedup 1.80
+chacha mb_per_sec 22.50
+chain speedup 5.95
+dotp speedup 1.00
+fir speedup 7.50
+image speedup 4.95
+matmul speedup 3.05
+rgb2yuv speedup 1.20

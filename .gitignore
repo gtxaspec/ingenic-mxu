@@ -31,3 +31,11 @@ patches/gcc-mxu3-work/
 patches/binutils-mxu3-work/
 patches/binutils-split/stages/
 patches/gcc-split/*.body
+
+# Per-builtin oracle generated files (reproducible from builtin_oracle_gen.py)
+tests/correctness/oracle_gen/
+
+# Test workspace artifacts
+test_mxu2
+patches/0001-add-ingenic-mxu3-support.patch.tmp
+tests/codegen/out/

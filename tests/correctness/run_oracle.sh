@@ -14,8 +14,13 @@ cd "$(dirname "$0")"
 pass=0; fail=0
 fail_list=()
 
-declare -A OKMSGS=( [oracle.c]="ORACLE OK" [aliasing.c]="ALIAS OK" )
-for src in oracle.c aliasing.c; do
+declare -A OKMSGS=(
+    [oracle.c]="ORACLE OK"
+    [aliasing.c]="ALIAS OK"
+    [mixed_modes.c]="MIXED OK"
+    [indexed_ls.c]="INDEXED OK"
+)
+for src in oracle.c aliasing.c mixed_modes.c indexed_ls.c; do
     okmsg="${OKMSGS[$src]}"
     for opt in -O0 -O1 -O2 -O3 -Os; do
         bin="$WORKDIR/${src%.*}$opt"
