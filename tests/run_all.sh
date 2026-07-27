@@ -6,6 +6,12 @@ set -u
 cd "$(dirname "$0")"
 fail=0
 
+if [ "${SKIP_DEVICE:-0}" != "1" ] && [ -z "${DEVICE:-}" ]; then
+    echo "DEVICE is not set. Export DEVICE=<test device ip> (the device must NFS-mount"
+    echo "NFS_SHARE), or run with SKIP_DEVICE=1 for the host-only layers."
+    exit 2
+fi
+
 echo "== Layer A: ICE matrix =="
 ( cd codegen && ./gen_matrix.py out/ >/dev/null && ./run_matrix.sh out/ ) || fail=$((fail+1))
 

@@ -5,7 +5,7 @@
 set -u
 
 GCC="${GCC:-/home/turismo/projects/thingino/thingino-firmware/output/master/toolchain_xburst1_uclibc_gcc15-3.10.14-musl/host/bin/mipsel-linux-gcc}"
-DEVICE="${DEVICE:-192.0.2.53}"   # T20 by default
+DEVICE="${DEVICE:?set DEVICE to your test device IP (must NFS-mount the repo)}"
 NFS_SHARE="${NFS_SHARE:-/home/turismo}"
 NFS_MOUNT="${NFS_MOUNT:-/mnt/nfs}"
 REGRESSION_PCT="${REGRESSION_PCT:-8}"   # fail if >N% slower than baseline
@@ -122,7 +122,7 @@ done
 # BASELINE_UPDATE=1 rewrites baseline.txt with current measurements
 if [ "$BASELINE_UPDATE" = "1" ] && [ ${#measured[@]} -gt 0 ]; then
     {
-        echo "# MXU2 toolchain baseline performance on T20 (192.0.2.53)."
+        echo "# MXU2 toolchain baseline performance on $DEVICE."
         echo "# Format: bench_name metric_name value"
         echo "# Updated $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         for n in "${!measured[@]}"; do

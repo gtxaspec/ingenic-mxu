@@ -13,7 +13,7 @@ set -u
 
 OURS_GCC="${OURS_GCC:-/home/turismo/projects/thingino/thingino-firmware/output/master/toolchain_xburst1_uclibc_gcc15-3.10.14-musl/host/bin/mipsel-linux-gcc}"
 VENDOR_GCC="${VENDOR_GCC:-/home/turismo/toolchains/vendor/mips-ingenic-xburst1-linux-glibc2.38-tools-r5.2.1.sr03/bin/mips-linux-gnu-gcc}"
-DEVICE="${DEVICE:-192.0.2.53}"
+DEVICE="${DEVICE:?set DEVICE to your test device IP (must NFS-mount the repo)}"
 NFS_LOCAL="${NFS_LOCAL:-/home/turismo}"
 NFS_REMOTE="${NFS_REMOTE:-/mnt/nfs}"
 WORKDIR="$NFS_LOCAL/.oracle_builtin"

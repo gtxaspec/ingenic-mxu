@@ -32,7 +32,7 @@ builtin/run_pbv.sh
 | Var | Default | Purpose |
 |-----|---------|---------|
 | `GCC` | thingino xb1 cc1 | Compiler under test |
-| `DEVICE` | 192.0.2.53 (T20) | Test device (must NFS-mount /home/turismo) |
+| `DEVICE` | *(required)* | Test device IP, e.g. a T20 or T31 board (must NFS-mount `NFS_SHARE`) |
 | `NFS_SHARE` | /home/turismo | NFS server export path |
 | `NFS_MOUNT` | /mnt/nfs | NFS mount path on device |
 | `SKIP_DEVICE` | 0 | If 1, skip layers C+D |

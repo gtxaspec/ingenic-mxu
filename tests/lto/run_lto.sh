@@ -4,7 +4,7 @@
 set -u
 
 GCC="${GCC:-/home/turismo/projects/thingino/thingino-firmware/output/master/toolchain_xburst1_uclibc_gcc15-3.10.14-musl/host/bin/mipsel-linux-gcc}"
-DEVICE="${DEVICE:-192.0.2.53}"
+DEVICE="${DEVICE:?set DEVICE to your test device IP (must NFS-mount the repo)}"
 NFS_SHARE="${NFS_SHARE:-/home/turismo}"
 
 WORKDIR="$NFS_SHARE/.lto"
