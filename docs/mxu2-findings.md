@@ -187,6 +187,39 @@ Build: `mipsel-linux-gnu-gcc -O0 -o mxu_probe mxu_probe.c -static`
 - [x] Test MXU2 with Ingenic GCC 4.7.2 toolchain — native path verified, shim auto-delegates
 - [ ] Test T32 (updated XBurst1 core)
 - [ ] Determine if MCSR dirty bit gets set after VPR write (read MCSR *after* arithmetic)
-- [ ] Port Ingenic GCC 7.2 MXU2 patches to modern GCC (13/14) for Buildroot/Thingino
+- [x] Port Ingenic GCC 7.2 MXU2 patches to modern GCC for Buildroot/Thingino — shipped on GCC 15.2 + binutils 2.44
 - [ ] Determine shufv control vector format for stereo interleave/deinterleave
 - [ ] FAAC/Opus MXU2 optimization using mxu2_dsp.h kernels
+- [ ] Widening / reduction optabs: `vec_unpacks_lo/hi`, `vec_unpacku_lo/hi`,
+      `vec_pack_trunc`, `dot_prod`, `reduc_plus_scal_*`. Higher value than the
+      vectorizer itself, since they also improve the intrinsic path, and 8-bit
+      to 16-bit image loops are where MXU2 is strongest (FIR bench is 7.5x
+      scalar). The `dotp` bench sitting at 1.00x is a direct symptom of their
+      absence. Raw instructions already exist (`vcvte`/`vcvto` even-odd
+      widening, `vtruncs`/`vtruncu`, `dotp`, `madd`), just not under standard
+      optab names.
+- [ ] Auto-vectorization: expose MXU2 through standard optab names. Three
+      things block it today:
+      1. `mips_preferred_simd_mode()` returns `word_mode` unless `ISA_HAS_MSA`,
+         so the vectorizer is never offered a 128-bit mode on MXU2 parts.
+      2. `mips_autovectorize_vector_modes()` only pushes V16QImode for MSA.
+      3. Every arithmetic pattern in `mips-mxu2.md` carries the `mxu2_` prefix,
+         so there is no `addv4si3` optab entry to expand into. All 141
+         define_insns are builtin-only entry points.
+
+      28 patterns are already optab-shaped twins (add, sub, mul, div, mod,
+      udiv, umod, and, ior, xor, one_cmpl, neg, smin, smax, umin, umax, ssadd,
+      usadd, vashl, vashr, vlshr, sqrt). MSA owns those standard names on the
+      same machine modes, so they cannot simply be un-prefixed: rename MSA's to
+      anonymous `*msa_...` and add a shared `define_expand` dispatching on
+      `ISA_HAS_MSA` vs `ISA_HAS_MXU2`, the same trick already used for
+      `mov<mode>`. The supporting cast is in place: NREGS=1 register model,
+      `mov`/`movmisalign` expands, `vec_set`/`vec_extract`/`vec_duplicate`,
+      `TARGET_VECTORIZE_VEC_PERM_CONST`, and the pipeline DFA with bypasses.
+
+      Do NOT enable `preferred_simd_mode` globally before tuning
+      `TARGET_VECTORIZE_ADD_STMT_COST`. MXU2 has no single-cycle 32-bit lane
+      rotate, and measured ChaCha20 runs at 0.70x, i.e. slower than scalar.
+      With GCC's default costs the vectorizer will silently regress
+      shuffle-heavy loops. Keep it opt-in behind `-mmxu2` rather than making it
+      a global switch.
