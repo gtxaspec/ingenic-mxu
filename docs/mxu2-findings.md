@@ -93,7 +93,7 @@ S32I2M XR16, $t0 = 0x7008042F  (write MXU_CR, MXU_EN = bit 0)
 LU1Q (load 128-bit):  (0x1C<<26) | (base<<21) | (offset_idx<<11) | (vpr_num<<6) | 0x14
 SU1Q (store 128-bit): (0x1C<<26) | (base<<21) | (offset_idx<<11) | (vpr_num<<6) | 0x1C
 
-  address = base + offset_idx * 16
+  address = base + offset      (RAW BYTE offset, 10-bit signed)
 
 LU1Q $vr0, 0($t3) = 0x71600014   ($t3=11, VPR0, offset=0)
 SU1Q $vr0, 0($t3) = 0x7160001C
@@ -101,6 +101,19 @@ LU1Q $vr0, 0($t0) = 0x71000014   ($t0=8)
 LU1Q $vr1, 0($t0) = 0x71000054   (VPR1)
 SU1Q $vr2, 0($t0) = 0x7100009C   (VPR2)
 ```
+
+**Correction (2026-08-06, T20-verified):** the offset field is a raw BYTE
+offset, not an index scaled by 16 as this file previously claimed. Field=1
+loads from base+1, and the access tolerates misalignment. All earlier
+probes used field=0, where the two readings coincide. The
+`__builtin_mxu2_lu1q/su1q/la1q/sa1q` second argument is therefore a byte
+offset; the shim API keeps its documented 16-byte-block index and scales
+inside the delegate macros.
+
+**msubq rounding (2026-08-06, T20-verified):** `msubq` negates the product
+and reuses the maddq floor-shift datapath, i.e. computes
+`clamp(acc - ceil((a*b)/2^15))`. It is NOT `clamp(acc - mulq(a,b))`; the
+maddq/msubq pair is asymmetric by design.
 
 ### MXU2 Control (COP2 CF format) — WORKING
 
