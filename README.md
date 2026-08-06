@@ -90,7 +90,7 @@ GCC (4 patches in `patches/gcc-split/`):
 | Chained ops `(a+b)*c` | ~72 insns (stack round-trip) | ~8 insns (registers) |
 | Register allocation | Manual (inline asm) | Automatic (GCC) |
 | Compiler optimization | Opaque asm blocks | Full -O2 scheduling |
-| Toolchain required | Any MIPS32 GCC | Patched GCC 15.2 |
+| Toolchain required | Any MIPS32 GCC | Patched GCC 15.2/16.1 |
 
 ---
 
