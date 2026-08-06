@@ -175,8 +175,8 @@ static void test_compare(void) {
     CMP_TEST_W(cne, A_W[i] != B_W[i]);
     CMP_TEST_W(clts, A_W[i] < B_W[i]);
     CMP_TEST_W(cles, A_W[i] <= B_W[i]);
-    { mxu2_v4u32 got = mxu2_cltu_w((mxu2_v4u32)a, (mxu2_v4u32)b); int _exp[4]; for(int i=0;i<4;i++) _exp[i]=((unsigned)A_W[i]<(unsigned)B_W[i])?-1:0; CHECK("cltu_w",&got,_exp,16); }
-    { mxu2_v4u32 got = mxu2_cleu_w((mxu2_v4u32)a, (mxu2_v4u32)b); int _exp[4]; for(int i=0;i<4;i++) _exp[i]=((unsigned)A_W[i]<=(unsigned)B_W[i])?-1:0; CHECK("cleu_w",&got,_exp,16); }
+    { mxu2_v4i32 got = mxu2_cltu_w((mxu2_v4u32)a, (mxu2_v4u32)b); int _exp[4]; for(int i=0;i<4;i++) _exp[i]=((unsigned)A_W[i]<(unsigned)B_W[i])?-1:0; CHECK("cltu_w",&got,_exp,16); }
+    { mxu2_v4i32 got = mxu2_cleu_w((mxu2_v4u32)a, (mxu2_v4u32)b); int _exp[4]; for(int i=0;i<4;i++) _exp[i]=((unsigned)A_W[i]<=(unsigned)B_W[i])?-1:0; CHECK("cleu_w",&got,_exp,16); }
     #undef CMP_TEST_W
 
     /* Unary compare-to-zero */
@@ -359,8 +359,8 @@ static void test_div(void) {
 
     unsigned int dau[4] __attribute__((aligned(16))) = {100, 200, 77, 1000};
     unsigned int dbu[4] __attribute__((aligned(16))) = {3, 7, 5, 11};
-    mxu2_v4u32 au = MXU2_LOAD(dau);
-    mxu2_v4u32 bu = MXU2_LOAD(dbu);
+    mxu2_v4u32 au = (mxu2_v4u32)MXU2_LOAD(dau);
+    mxu2_v4u32 bu = (mxu2_v4u32)MXU2_LOAD(dbu);
     unsigned int expu[4];
 
     TRY_BEGIN("divu_w") {
@@ -502,19 +502,19 @@ static void test_immediate_logic(void) {
     unsigned char exp[16];
 
     TRY_BEGIN("andib") {
-        mxu2_v16u8 got = mxu2_andib(a, 0x0F);
+        mxu2_v16i8 got = mxu2_andib(a, 0x0F);
         for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] & 0x0F;
         CHECK("andib(0x0F)", &got, exp, 16);
     } TRY_END();
 
     TRY_BEGIN("orib") {
-        mxu2_v16u8 got = mxu2_orib(a, 0x80);
+        mxu2_v16i8 got = mxu2_orib(a, 0x80);
         for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] | 0x80;
         CHECK("orib(0x80)", &got, exp, 16);
     } TRY_END();
 
     TRY_BEGIN("xorib") {
-        mxu2_v16u8 got = mxu2_xorib(a, 0xFF);
+        mxu2_v16i8 got = mxu2_xorib(a, 0xFF);
         for (int i = 0; i < 16; i++) exp[i] = (unsigned char)A_B[i] ^ 0xFF;
         CHECK("xorib(0xFF)", &got, exp, 16);
     } TRY_END();
@@ -535,8 +535,8 @@ static void test_scalar(void) {
 
     /* mtcpus_b: extract signed byte */
     mxu2_v16i8 ab = LOAD_B(A_B);
-    CHECK_SCALAR("mtcpus_b[0]", mxu2_mtcpus_b((mxu2_v4i32)ab, 0), (int)A_B[0]);
-    CHECK_SCALAR("mtcpus_b[3]", mxu2_mtcpus_b((mxu2_v4i32)ab, 3), (int)A_B[3]);
+    CHECK_SCALAR("mtcpus_b[0]", mxu2_mtcpus_b(ab, 0), (int)A_B[0]);
+    CHECK_SCALAR("mtcpus_b[3]", mxu2_mtcpus_b(ab, 3), (int)A_B[3]);
 
     /* mfcpu_w: broadcast int to all lanes */
     {
@@ -586,14 +586,14 @@ static void test_branch(void) {
     mxu2_v16i8 vnz = LOAD_B(nz);
     mxu2_v16i8 vzz = LOAD_B(zz);
 
-    CHECK_SCALAR("bnez1q(nz)", mxu2_bnez1q(vnz), 1);
-    CHECK_SCALAR("bnez1q(zz)", mxu2_bnez1q(vzz), 0);
-    CHECK_SCALAR("beqz1q(nz)", mxu2_beqz1q(vnz), 0);
-    CHECK_SCALAR("beqz1q(zz)", mxu2_beqz1q(vzz), 1);
-    CHECK_SCALAR("bnez16b(nz)", mxu2_bnez16b(vnz), 1);
-    CHECK_SCALAR("beqz16b(zz)", mxu2_beqz16b(vzz), 1);
-    CHECK_SCALAR("bnez4w(nz)", mxu2_bnez4w(vnz), 1);
-    CHECK_SCALAR("beqz4w(zz)", mxu2_beqz4w(vzz), 1);
+    CHECK_SCALAR("bnez1q(nz)", mxu2_bnez1q((mxu2_v16u8)vnz), 1);
+    CHECK_SCALAR("bnez1q(zz)", mxu2_bnez1q((mxu2_v16u8)vzz), 0);
+    CHECK_SCALAR("beqz1q(nz)", mxu2_beqz1q((mxu2_v16u8)vnz), 0);
+    CHECK_SCALAR("beqz1q(zz)", mxu2_beqz1q((mxu2_v16u8)vzz), 1);
+    CHECK_SCALAR("bnez16b(nz)", mxu2_bnez16b((mxu2_v16u8)vnz), 1);
+    CHECK_SCALAR("beqz16b(zz)", mxu2_beqz16b((mxu2_v16u8)vzz), 1);
+    CHECK_SCALAR("bnez4w(nz)", mxu2_bnez4w((mxu2_v4u32)vnz), 1);
+    CHECK_SCALAR("beqz4w(zz)", mxu2_beqz4w((mxu2_v4u32)vzz), 1);
 }
 
 static void test_loadstore(void) {
@@ -601,11 +601,11 @@ static void test_loadstore(void) {
     int buf[8] __attribute__((aligned(16))) = {1,2,3,4,5,6,7,8};
     int out[4] __attribute__((aligned(16)));
 
-    mxu2_v4i32 v = mxu2_lu1q(buf, 0);
+    mxu2_v4i32 v = (mxu2_v4i32)mxu2_lu1q(buf, 0);
     int exp0[4] = {1,2,3,4};
     CHECK("lu1q(0)", &v, exp0, 16);
 
-    mxu2_v4i32 v1 = mxu2_lu1q(buf, 1);
+    mxu2_v4i32 v1 = (mxu2_v4i32)mxu2_lu1q(buf, 1);
     int exp1[4] = {5,6,7,8};
     CHECK("lu1q(1)", &v1, exp1, 16);
 
@@ -644,10 +644,17 @@ static void test_bulk_no_sigill(void) {
     mxu2_v16i8  vb3 = LOAD_B(C_B);
     mxu2_v8i16  vh3 = LOAD_H(C_H);
     mxu2_v4i32  vw3 = MXU2_LOAD(C_W);
+    mxu2_v16u8  vu2 = *(mxu2_v16u8 *)B_B;
+    mxu2_v16u8  vu3 = *(mxu2_v16u8 *)C_B;
+    mxu2_v8u16  vuh = *(mxu2_v8u16 *)A_H;
+    mxu2_v8u16  vuh2 = *(mxu2_v8u16 *)B_H;
+    mxu2_v8u16  vuh3 = *(mxu2_v8u16 *)C_H;
+    mxu2_v4u32  vuw3 = *(mxu2_v4u32 *)C_W;
+    mxu2_v4f32  vf3 = *(mxu2_v4f32 *)A_F;
 
     volatile mxu2_v16i8 rb; volatile mxu2_v16u8 ru;
     volatile mxu2_v8i16 rh; volatile mxu2_v4i32 rw;
-    volatile mxu2_v4u32 ruw; volatile mxu2_v4f32 rf;
+    volatile mxu2_v4u32 ruw; volatile mxu2_v8u16 ruh; volatile mxu2_v4f32 rf;
     volatile int ri;
 
     /* Helper: TRY op, count pass if no SIGILL */
@@ -665,18 +672,18 @@ static void test_bulk_no_sigill(void) {
     SWEEP("clts_h", rh = mxu2_clts_h(vh, vh2));
     SWEEP("clts_w", rw = mxu2_clts_w(vw, vw2));
     SWEEP("clts_d", rw = mxu2_clts_d(vw, vw2));
-    SWEEP("cltu_b", ru = mxu2_cltu_b(vu, vu));
-    SWEEP("cltu_h", rh = mxu2_cltu_h(vh, vh2));
-    SWEEP("cltu_w", ruw = mxu2_cltu_w(vuw, vuw2));
-    SWEEP("cltu_d", ruw = mxu2_cltu_d(vuw, vuw2));
+    SWEEP("cltu_b", rb = mxu2_cltu_b(vu, vu2));
+    SWEEP("cltu_h", rh = mxu2_cltu_h(vuh, vuh2));
+    SWEEP("cltu_w", rw = mxu2_cltu_w(vuw, vuw2));
+    SWEEP("cltu_d", rw = mxu2_cltu_d(vuw, vuw2));
     SWEEP("cles_b", rb = mxu2_cles_b(vb, vb2));
     SWEEP("cles_h", rh = mxu2_cles_h(vh, vh2));
     SWEEP("cles_w", rw = mxu2_cles_w(vw, vw2));
     SWEEP("cles_d", rw = mxu2_cles_d(vw, vw2));
-    SWEEP("cleu_b", ru = mxu2_cleu_b(vu, vu));
-    SWEEP("cleu_h", rh = mxu2_cleu_h(vh, vh2));
-    SWEEP("cleu_w", ruw = mxu2_cleu_w(vuw, vuw2));
-    SWEEP("cleu_d", ruw = mxu2_cleu_d(vuw, vuw2));
+    SWEEP("cleu_b", rb = mxu2_cleu_b(vu, vu2));
+    SWEEP("cleu_h", rh = mxu2_cleu_h(vuh, vuh2));
+    SWEEP("cleu_w", rw = mxu2_cleu_w(vuw, vuw2));
+    SWEEP("cleu_d", rw = mxu2_cleu_d(vuw, vuw2));
     SWEEP("maxa_b", rb = mxu2_maxa_b(vb, vb2));
     SWEEP("maxa_h", rh = mxu2_maxa_h(vh, vh2));
     SWEEP("maxa_w", rw = mxu2_maxa_w(vw, vw2));
@@ -693,12 +700,12 @@ static void test_bulk_no_sigill(void) {
     SWEEP("mins_h", rh = mxu2_mins_h(vh, vh2));
     SWEEP("mins_w", rw = mxu2_mins_w(vw, vw2));
     SWEEP("mins_d", rw = mxu2_mins_d(vw, vw2));
-    SWEEP("maxu_b", ru = mxu2_maxu_b(vu, vu));
-    SWEEP("maxu_h", rh = mxu2_maxu_h(vh, vh2));
+    SWEEP("maxu_b", ru = mxu2_maxu_b(vu, vu2));
+    SWEEP("maxu_h", ruh = mxu2_maxu_h(vuh, vuh2));
     SWEEP("maxu_w", ruw = mxu2_maxu_w(vuw, vuw2));
     SWEEP("maxu_d", ruw = mxu2_maxu_d(vuw, vuw2));
-    SWEEP("minu_b", ru = mxu2_minu_b(vu, vu));
-    SWEEP("minu_h", rh = mxu2_minu_h(vh, vh2));
+    SWEEP("minu_b", ru = mxu2_minu_b(vu, vu2));
+    SWEEP("minu_h", ruh = mxu2_minu_h(vuh, vuh2));
     SWEEP("minu_w", ruw = mxu2_minu_w(vuw, vuw2));
     SWEEP("minu_d", ruw = mxu2_minu_d(vuw, vuw2));
     SWEEP("sra_b", rb = mxu2_sra_b(vb, vb2));
@@ -729,10 +736,10 @@ static void test_bulk_no_sigill(void) {
     SWEEP("addas_h", rh = mxu2_addas_h(vh, vh2));
     SWEEP("addas_w", rw = mxu2_addas_w(vw, vw2));
     SWEEP("addas_d", rw = mxu2_addas_d(vw, vw2));
-    SWEEP("subua_b", rb = mxu2_subua_b(vb, vb2));
-    SWEEP("subua_h", rh = mxu2_subua_h(vh, vh2));
-    SWEEP("subua_w", rw = mxu2_subua_w(vw, vw2));
-    SWEEP("subua_d", rw = mxu2_subua_d(vw, vw2));
+    SWEEP("subua_b", rb = mxu2_subua_b(vu, vu2));
+    SWEEP("subua_h", rh = mxu2_subua_h(vuh, vuh2));
+    SWEEP("subua_w", rw = mxu2_subua_w(vuw, vuw2));
+    SWEEP("subua_d", rw = mxu2_subua_d(vuw, vuw2));
     SWEEP("addss_b", rb = mxu2_addss_b(vb, vb2));
     SWEEP("addss_h", rh = mxu2_addss_h(vh, vh2));
     SWEEP("addss_w", rw = mxu2_addss_w(vw, vw2));
@@ -741,22 +748,22 @@ static void test_bulk_no_sigill(void) {
     SWEEP("subss_h", rh = mxu2_subss_h(vh, vh2));
     SWEEP("subss_w", rw = mxu2_subss_w(vw, vw2));
     SWEEP("subss_d", rw = mxu2_subss_d(vw, vw2));
-    SWEEP("adduu_b", ru = mxu2_adduu_b(vu, vu));
-    SWEEP("adduu_h", rh = mxu2_adduu_h(vh, vh2));
+    SWEEP("adduu_b", ru = mxu2_adduu_b(vu, vu2));
+    SWEEP("adduu_h", ruh = mxu2_adduu_h(vuh, vuh2));
     SWEEP("adduu_w", ruw = mxu2_adduu_w(vuw, vuw2));
     SWEEP("adduu_d", ruw = mxu2_adduu_d(vuw, vuw2));
-    SWEEP("subuu_b", ru = mxu2_subuu_b(vu, vu));
-    SWEEP("subuu_h", rh = mxu2_subuu_h(vh, vh2));
+    SWEEP("subuu_b", ru = mxu2_subuu_b(vu, vu2));
+    SWEEP("subuu_h", ruh = mxu2_subuu_h(vuh, vuh2));
     SWEEP("subuu_w", ruw = mxu2_subuu_w(vuw, vuw2));
     SWEEP("subuu_d", ruw = mxu2_subuu_d(vuw, vuw2));
     SWEEP("add_b", rb = mxu2_add_b(vb, vb2));
     SWEEP("add_h", rh = mxu2_add_h(vh, vh2));
     SWEEP("add_w", rw = mxu2_add_w(vw, vw2));
     SWEEP("add_d", rw = mxu2_add_d(vw, vw2));
-    SWEEP("subus_b", rb = mxu2_subus_b(vb, vb2));
-    SWEEP("subus_h", rh = mxu2_subus_h(vh, vh2));
-    SWEEP("subus_w", rw = mxu2_subus_w(vw, vw2));
-    SWEEP("subus_d", rw = mxu2_subus_d(vw, vw2));
+    SWEEP("subus_b", rb = mxu2_subus_b(vu, vu2));
+    SWEEP("subus_h", rh = mxu2_subus_h(vuh, vuh2));
+    SWEEP("subus_w", rw = mxu2_subus_w(vuw, vuw2));
+    SWEEP("subus_d", rw = mxu2_subus_d(vuw, vuw2));
     SWEEP("sll_b", rb = mxu2_sll_b(vb, vb2));
     SWEEP("sll_h", rh = mxu2_sll_h(vh, vh2));
     SWEEP("sll_w", rw = mxu2_sll_w(vw, vw2));
@@ -773,12 +780,12 @@ static void test_bulk_no_sigill(void) {
     SWEEP("avers_h", rh = mxu2_avers_h(vh, vh2));
     SWEEP("avers_w", rw = mxu2_avers_w(vw, vw2));
     SWEEP("avers_d", rw = mxu2_avers_d(vw, vw2));
-    SWEEP("aveu_b", ru = mxu2_aveu_b(vu, vu));
-    SWEEP("aveu_h", rh = mxu2_aveu_h(vh, vh2));
+    SWEEP("aveu_b", ru = mxu2_aveu_b(vu, vu2));
+    SWEEP("aveu_h", ruh = mxu2_aveu_h(vuh, vuh2));
     SWEEP("aveu_w", ruw = mxu2_aveu_w(vuw, vuw2));
     SWEEP("aveu_d", ruw = mxu2_aveu_d(vuw, vuw2));
-    SWEEP("averu_b", ru = mxu2_averu_b(vu, vu));
-    SWEEP("averu_h", rh = mxu2_averu_h(vh, vh2));
+    SWEEP("averu_b", ru = mxu2_averu_b(vu, vu2));
+    SWEEP("averu_h", ruh = mxu2_averu_h(vuh, vuh2));
     SWEEP("averu_w", ruw = mxu2_averu_w(vuw, vuw2));
     SWEEP("averu_d", ruw = mxu2_averu_d(vuw, vuw2));
     SWEEP("mul_b", rb = mxu2_mul_b(vb, vb2));
@@ -788,51 +795,51 @@ static void test_bulk_no_sigill(void) {
     SWEEP("divs_b", rb = mxu2_divs_b(vb, vb2));
     SWEEP("divs_h", rh = mxu2_divs_h(vh, vh2));
     SWEEP("divs_d", rw = mxu2_divs_d(vw, vw2));
-    SWEEP("divu_b", ru = mxu2_divu_b(vu, vu));
-    SWEEP("divu_h", rh = mxu2_divu_h(vh, vh2));
+    SWEEP("divu_b", ru = mxu2_divu_b(vu, vu2));
+    SWEEP("divu_h", ruh = mxu2_divu_h(vuh, vuh2));
     SWEEP("divu_d", ruw = mxu2_divu_d(vuw, vuw2));
     SWEEP("mods_b", rb = mxu2_mods_b(vb, vb2));
     SWEEP("mods_h", rh = mxu2_mods_h(vh, vh2));
     SWEEP("mods_d", rw = mxu2_mods_d(vw, vw2));
-    SWEEP("modu_b", ru = mxu2_modu_b(vu, vu));
-    SWEEP("modu_h", rh = mxu2_modu_h(vh, vh2));
+    SWEEP("modu_b", ru = mxu2_modu_b(vu, vu2));
+    SWEEP("modu_h", ruh = mxu2_modu_h(vuh, vuh2));
     SWEEP("modu_d", ruw = mxu2_modu_d(vuw, vuw2));
-    SWEEP("dotps_h", rh = mxu2_dotps_h(vh, vh2));
-    SWEEP("dotps_w", rw = mxu2_dotps_w(vw, vw2));
+    SWEEP("dotps_h", rh = mxu2_dotps_h(vb, vb2));
+    SWEEP("dotps_w", rw = mxu2_dotps_w(vh, vh2));
     SWEEP("dotps_d", rw = mxu2_dotps_d(vw, vw2));
-    SWEEP("dotpu_h", rh = mxu2_dotpu_h(vh, vh2));
-    SWEEP("dotpu_w", ruw = mxu2_dotpu_w(vuw, vuw2));
+    SWEEP("dotpu_h", ruh = mxu2_dotpu_h(vu, vu2));
+    SWEEP("dotpu_w", ruw = mxu2_dotpu_w(vuh, vuh2));
     SWEEP("dotpu_d", ruw = mxu2_dotpu_d(vuw, vuw2));
-    SWEEP("dadds_h", rh = mxu2_dadds_h(vh, vh2));
-    SWEEP("dadds_w", rw = mxu2_dadds_w(vw, vw2));
-    SWEEP("dadds_d", rw = mxu2_dadds_d(vw, vw2));
-    SWEEP("daddu_h", rh = mxu2_daddu_h(vh, vh2));
-    SWEEP("daddu_w", ruw = mxu2_daddu_w(vuw, vuw2));
-    SWEEP("daddu_d", ruw = mxu2_daddu_d(vuw, vuw2));
-    SWEEP("dsubs_h", rh = mxu2_dsubs_h(vh, vh2));
-    SWEEP("dsubs_w", rw = mxu2_dsubs_w(vw, vw2));
-    SWEEP("dsubs_d", rw = mxu2_dsubs_d(vw, vw2));
-    SWEEP("dsubu_h", rh = mxu2_dsubu_h(vh, vh2));
-    SWEEP("dsubu_w", ruw = mxu2_dsubu_w(vuw, vuw2));
-    SWEEP("dsubu_d", ruw = mxu2_dsubu_d(vuw, vuw2));
+    SWEEP("dadds_h", rh = mxu2_dadds_h(vh, vb, vb2));
+    SWEEP("dadds_w", rw = mxu2_dadds_w(vw, vh, vh2));
+    SWEEP("dadds_d", rw = mxu2_dadds_d(vw, vw2, vw3));
+    SWEEP("daddu_h", ruh = mxu2_daddu_h(vuh, vu, vu2));
+    SWEEP("daddu_w", ruw = mxu2_daddu_w(vuw, vuh, vuh2));
+    SWEEP("daddu_d", ruw = mxu2_daddu_d(vuw, vuw2, vuw3));
+    SWEEP("dsubs_h", rh = mxu2_dsubs_h(vh, vb, vb2));
+    SWEEP("dsubs_w", rw = mxu2_dsubs_w(vw, vh, vh2));
+    SWEEP("dsubs_d", rw = mxu2_dsubs_d(vw, vw2, vw3));
+    SWEEP("dsubu_h", rh = mxu2_dsubu_h(vh, vu, vu2));
+    SWEEP("dsubu_w", rw = mxu2_dsubu_w(vw, vuh, vuh2));
+    SWEEP("dsubu_d", rw = mxu2_dsubu_d(vw, vuw, vuw2));
     SWEEP("mulq_h", rh = mxu2_mulq_h(vh, vh2));
     SWEEP("mulq_w", rw = mxu2_mulq_w(vw, vw2));
     SWEEP("mulqr_h", rh = mxu2_mulqr_h(vh, vh2));
     SWEEP("mulqr_w", rw = mxu2_mulqr_w(vw, vw2));
-    SWEEP("maddq_h", rh = mxu2_maddq_h(vh, vh2));
-    SWEEP("maddq_w", rw = mxu2_maddq_w(vw, vw2));
-    SWEEP("maddqr_h", rh = mxu2_maddqr_h(vh, vh2));
-    SWEEP("maddqr_w", rw = mxu2_maddqr_w(vw, vw2));
-    SWEEP("msubq_h", rh = mxu2_msubq_h(vh, vh2));
-    SWEEP("msubq_w", rw = mxu2_msubq_w(vw, vw2));
-    SWEEP("msubqr_h", rh = mxu2_msubqr_h(vh, vh2));
-    SWEEP("msubqr_w", rw = mxu2_msubqr_w(vw, vw2));
-    SWEEP("madd_b", rw = mxu2_madd_b(vw3, vw, vw2));
-    SWEEP("madd_h", rw = mxu2_madd_h(vw3, vw, vw2));
-    SWEEP("madd_d", rw = mxu2_madd_d(vw3, vw, vw2));
-    SWEEP("msub_b", rw = mxu2_msub_b(vw3, vw, vw2));
-    SWEEP("msub_h", rw = mxu2_msub_h(vw3, vw, vw2));
-    SWEEP("msub_d", rw = mxu2_msub_d(vw3, vw, vw2));
+    SWEEP("maddq_h", rh = mxu2_maddq_h(vh, vh2, vh3));
+    SWEEP("maddq_w", rw = mxu2_maddq_w(vw, vw2, vw3));
+    SWEEP("maddqr_h", rh = mxu2_maddqr_h(vh, vh2, vh3));
+    SWEEP("maddqr_w", rw = mxu2_maddqr_w(vw, vw2, vw3));
+    SWEEP("msubq_h", rh = mxu2_msubq_h(vh, vh2, vh3));
+    SWEEP("msubq_w", rw = mxu2_msubq_w(vw, vw2, vw3));
+    SWEEP("msubqr_h", rh = mxu2_msubqr_h(vh, vh2, vh3));
+    SWEEP("msubqr_w", rw = mxu2_msubqr_w(vw, vw2, vw3));
+    SWEEP("madd_b", rb = mxu2_madd_b(vb, vb2, vb3));
+    SWEEP("madd_h", rh = mxu2_madd_h(vh, vh2, vh3));
+    SWEEP("madd_d", rw = mxu2_madd_d(vw, vw2, vw3));
+    SWEEP("msub_b", rb = mxu2_msub_b(vb, vb2, vb3));
+    SWEEP("msub_h", rh = mxu2_msub_h(vh, vh2, vh3));
+    SWEEP("msub_d", rw = mxu2_msub_d(vw, vw2, vw3));
     SWEEP("fadd_w", rf = mxu2_fadd_w(vf, vf2));
     SWEEP("fadd_d", rw = mxu2_fadd_d(vw, vw2));
     SWEEP("fsub_w", rf = mxu2_fsub_w(vf, vf2));
@@ -841,17 +848,17 @@ static void test_bulk_no_sigill(void) {
     SWEEP("fmul_d", rw = mxu2_fmul_d(vw, vw2));
     SWEEP("fdiv_w", rf = mxu2_fdiv_w(vf, vf2));
     SWEEP("fdiv_d", rw = mxu2_fdiv_d(vw, vw2));
-    SWEEP("fmadd_w", rf = mxu2_fmadd_w(vf, vf2));
-    SWEEP("fmadd_d", rw = mxu2_fmadd_d(vw, vw2));
-    SWEEP("fmsub_w", rf = mxu2_fmsub_w(vf, vf2));
-    SWEEP("fmsub_d", rw = mxu2_fmsub_d(vw, vw2));
-    SWEEP("fcor_w", rf = mxu2_fcor_w(vf, vf2));
+    SWEEP("fmadd_w", rf = mxu2_fmadd_w(vf, vf2, vf3));
+    SWEEP("fmadd_d", rw = mxu2_fmadd_d(vw, vw2, vw3));
+    SWEEP("fmsub_w", rf = mxu2_fmsub_w(vf, vf2, vf3));
+    SWEEP("fmsub_d", rw = mxu2_fmsub_d(vw, vw2, vw3));
+    SWEEP("fcor_w", rw = mxu2_fcor_w(vf, vf2));
     SWEEP("fcor_d", rw = mxu2_fcor_d(vw, vw2));
-    SWEEP("fceq_w", rf = mxu2_fceq_w(vf, vf2));
+    SWEEP("fceq_w", rw = mxu2_fceq_w(vf, vf2));
     SWEEP("fceq_d", rw = mxu2_fceq_d(vw, vw2));
-    SWEEP("fclt_w", rf = mxu2_fclt_w(vf, vf2));
+    SWEEP("fclt_w", rw = mxu2_fclt_w(vf, vf2));
     SWEEP("fclt_d", rw = mxu2_fclt_d(vw, vw2));
-    SWEEP("fcle_w", rf = mxu2_fcle_w(vf, vf2));
+    SWEEP("fcle_w", rw = mxu2_fcle_w(vf, vf2));
     SWEEP("fcle_d", rw = mxu2_fcle_d(vw, vw2));
     SWEEP("fmax_w", rf = mxu2_fmax_w(vf, vf2));
     SWEEP("fmax_d", rw = mxu2_fmax_d(vw, vw2));
@@ -861,9 +868,9 @@ static void test_bulk_no_sigill(void) {
     SWEEP("fmin_d", rw = mxu2_fmin_d(vw, vw2));
     SWEEP("fmina_w", rf = mxu2_fmina_w(vf, vf2));
     SWEEP("fmina_d", rw = mxu2_fmina_d(vw, vw2));
-    SWEEP("vcvths", rw = mxu2_vcvths(vw, vw2));
-    SWEEP("vcvtsd", rw = mxu2_vcvtsd(vw, vw2));
-    SWEEP("vcvtqhs", rw = mxu2_vcvtqhs(vw, vw2));
+    SWEEP("vcvths", rh = mxu2_vcvths(vf, vf2));
+    SWEEP("vcvtsd", rf = mxu2_vcvtsd(vw, vw2));
+    SWEEP("vcvtqhs", rh = mxu2_vcvtqhs(vf, vf2));
     SWEEP("vcvtqwd", rw = mxu2_vcvtqwd(vw, vw2));
     SWEEP("ceqz_b", rb = mxu2_ceqz_b(vb));
     SWEEP("ceqz_h", rh = mxu2_ceqz_h(vh));
@@ -893,31 +900,31 @@ static void test_bulk_no_sigill(void) {
     SWEEP("bcnt_h", rh = mxu2_bcnt_h(vh));
     SWEEP("bcnt_w", rw = mxu2_bcnt_w(vw));
     SWEEP("bcnt_d", rw = mxu2_bcnt_d(vw));
-    SWEEP("fsqrt_w", rw = mxu2_fsqrt_w(vw));
+    SWEEP("fsqrt_w", rf = mxu2_fsqrt_w(vf));
     SWEEP("fsqrt_d", rw = mxu2_fsqrt_d(vw));
-    SWEEP("fclass_w", rw = mxu2_fclass_w(vw));
+    SWEEP("fclass_w", rw = mxu2_fclass_w(vf));
     SWEEP("fclass_d", rw = mxu2_fclass_d(vw));
-    SWEEP("vcvtesh", rw = mxu2_vcvtesh(vw));
-    SWEEP("vcvteds", rw = mxu2_vcvteds(vw));
-    SWEEP("vcvtosh", rw = mxu2_vcvtosh(vw));
-    SWEEP("vcvtods", rw = mxu2_vcvtods(vw));
-    SWEEP("vcvtssw", rw = mxu2_vcvtssw(vw));
+    SWEEP("vcvtesh", rf = mxu2_vcvtesh(vh));
+    SWEEP("vcvteds", rw = mxu2_vcvteds(vf));
+    SWEEP("vcvtosh", rf = mxu2_vcvtosh(vh));
+    SWEEP("vcvtods", rw = mxu2_vcvtods(vf));
+    SWEEP("vcvtssw", rf = mxu2_vcvtssw(vw));
     SWEEP("vcvtsdl", rw = mxu2_vcvtsdl(vw));
-    SWEEP("vcvtusw", rw = mxu2_vcvtusw(vw));
-    SWEEP("vcvtudl", rw = mxu2_vcvtudl(vw));
-    SWEEP("vcvtsws", rw = mxu2_vcvtsws(vw));
+    SWEEP("vcvtusw", rf = mxu2_vcvtusw(vuw));
+    SWEEP("vcvtudl", rw = mxu2_vcvtudl(vuw));
+    SWEEP("vcvtsws", rw = mxu2_vcvtsws(vf));
     SWEEP("vcvtsld", rw = mxu2_vcvtsld(vw));
-    SWEEP("vcvtuws", rw = mxu2_vcvtuws(vw));
-    SWEEP("vcvtuld", rw = mxu2_vcvtuld(vw));
-    SWEEP("vcvtrws", rw = mxu2_vcvtrws(vw));
+    SWEEP("vcvtuws", ruw = mxu2_vcvtuws(vf));
+    SWEEP("vcvtuld", ruw = mxu2_vcvtuld(vw));
+    SWEEP("vcvtrws", rw = mxu2_vcvtrws(vf));
     SWEEP("vcvtrld", rw = mxu2_vcvtrld(vw));
-    SWEEP("vtruncsws", rw = mxu2_vtruncsws(vw));
+    SWEEP("vtruncsws", rw = mxu2_vtruncsws(vf));
     SWEEP("vtruncsld", rw = mxu2_vtruncsld(vw));
-    SWEEP("vtruncuws", rw = mxu2_vtruncuws(vw));
-    SWEEP("vtrunculd", rw = mxu2_vtrunculd(vw));
-    SWEEP("vcvtqesh", rw = mxu2_vcvtqesh(vw));
+    SWEEP("vtruncuws", ruw = mxu2_vtruncuws(vf));
+    SWEEP("vtrunculd", ruw = mxu2_vtrunculd(vw));
+    SWEEP("vcvtqesh", rf = mxu2_vcvtqesh(vh));
     SWEEP("vcvtqedw", rw = mxu2_vcvtqedw(vw));
-    SWEEP("vcvtqosh", rw = mxu2_vcvtqosh(vw));
+    SWEEP("vcvtqosh", rf = mxu2_vcvtqosh(vh));
     SWEEP("vcvtqodw", rw = mxu2_vcvtqodw(vw));
     SWEEP("slli_b", rb = mxu2_slli_b(vb, 1));
     SWEEP("slli_h", rh = mxu2_slli_h(vh, 1));
@@ -944,34 +951,34 @@ static void test_bulk_no_sigill(void) {
     SWEEP("sats_w", rw = mxu2_sats_w(vw, 1));
     SWEEP("sats_d", rw = mxu2_sats_d(vw, 1));
     SWEEP("satu_b", ru = mxu2_satu_b(vu, 1));
-    SWEEP("satu_h", rh = mxu2_satu_h(vh, 1));
+    SWEEP("satu_h", ruh = mxu2_satu_h(vuh, 1));
     SWEEP("satu_w", ruw = mxu2_satu_w(vuw, 1));
     SWEEP("satu_d", ruw = mxu2_satu_d(vuw, 1));
-    SWEEP("andib", ru = mxu2_andib(vu, 0x55));
-    SWEEP("norib", ru = mxu2_norib(vu, 0x55));
-    SWEEP("orib", ru = mxu2_orib(vu, 0x55));
-    SWEEP("xorib", ru = mxu2_xorib(vu, 0x55));
+    SWEEP("andib", rb = mxu2_andib(vb, 0x55));
+    SWEEP("norib", rb = mxu2_norib(vb, 0x55));
+    SWEEP("orib", rb = mxu2_orib(vb, 0x55));
+    SWEEP("xorib", rb = mxu2_xorib(vb, 0x55));
     SWEEP("repi_b", rb = mxu2_repi_b(vb, 0));
     SWEEP("repi_h", rh = mxu2_repi_h(vh, 0));
     SWEEP("repi_w", rw = mxu2_repi_w(vw, 0));
     SWEEP("repi_d", rw = mxu2_repi_d(vw, 0));
     SWEEP("bselv", rb = mxu2_bselv(vb, vb2, vb3));
     SWEEP("shufv", rb = mxu2_shufv(vb, vb2, vb3));
-    SWEEP("bnez16b", ri = mxu2_bnez16b(vb));
-    SWEEP("bnez8h", ri = mxu2_bnez8h(vb));
-    SWEEP("bnez4w", ri = mxu2_bnez4w(vb));
-    SWEEP("bnez2d", ri = mxu2_bnez2d(vb));
-    SWEEP("bnez1q", ri = mxu2_bnez1q(vb));
-    SWEEP("beqz16b", ri = mxu2_beqz16b(vb));
-    SWEEP("beqz8h", ri = mxu2_beqz8h(vb));
-    SWEEP("beqz4w", ri = mxu2_beqz4w(vb));
-    SWEEP("beqz2d", ri = mxu2_beqz2d(vb));
-    SWEEP("beqz1q", ri = mxu2_beqz1q(vb));
-    SWEEP("mtcpus_b", ri = mxu2_mtcpus_b(vw, 0));
-    SWEEP("mtcpus_h", ri = mxu2_mtcpus_h(vw, 0));
+    SWEEP("bnez16b", ri = mxu2_bnez16b(vu));
+    SWEEP("bnez8h", ri = mxu2_bnez8h(vuh));
+    SWEEP("bnez4w", ri = mxu2_bnez4w(vuw));
+    SWEEP("bnez2d", ri = mxu2_bnez2d(vuw));
+    SWEEP("bnez1q", ri = mxu2_bnez1q(vu));
+    SWEEP("beqz16b", ri = mxu2_beqz16b(vu));
+    SWEEP("beqz8h", ri = mxu2_beqz8h(vuh));
+    SWEEP("beqz4w", ri = mxu2_beqz4w(vuw));
+    SWEEP("beqz2d", ri = mxu2_beqz2d(vuw));
+    SWEEP("beqz1q", ri = mxu2_beqz1q(vu));
+    SWEEP("mtcpus_b", ri = mxu2_mtcpus_b(vb, 0));
+    SWEEP("mtcpus_h", ri = mxu2_mtcpus_h(vh, 0));
     SWEEP("mtcpus_w", ri = mxu2_mtcpus_w(vw, 0));
-    SWEEP("mtcpuu_b", ri = (int)mxu2_mtcpuu_b(vw, 0));
-    SWEEP("mtcpuu_h", ri = (int)mxu2_mtcpuu_h(vw, 0));
+    SWEEP("mtcpuu_b", ri = (int)mxu2_mtcpuu_b(vb, 0));
+    SWEEP("mtcpuu_h", ri = (int)mxu2_mtcpuu_h(vh, 0));
     SWEEP("mtcpuu_w", ri = (int)mxu2_mtcpuu_w(vw, 0));
     SWEEP("mfcpu_b",  rb = mxu2_mfcpu_b(42));
     SWEEP("mfcpu_h",  rh = mxu2_mfcpu_h(42));
@@ -993,6 +1000,100 @@ static void test_bulk_no_sigill(void) {
     SWEEP("repx_w", rw = mxu2_repx_w(vw, 0));
 
     #undef SWEEP
+}
+
+
+/* --- Accumulate / extract value checks ---
+   Vendor 3-arg accumulate forms and unsigned extracts, verified against
+   the same expected-value formulas as test_builtins_full.c (HW-proven). */
+
+static short vc_clamp_s16(int x) { return (short)(x < -32768 ? -32768 : x > 32767 ? 32767 : x); }
+static short vc_mulq_h(short a, short b) {
+    long long r = ((long long)a * b) >> 15;
+    return vc_clamp_s16((int)r);
+}
+/* msubq negates the product and reuses the floor-shift datapath, i.e.
+   acc - ceil((a*b)/2^15).  HW-verified on T20; the maddq/msubq pair is
+   asymmetric by design.  */
+static short vc_msubq_term_h(short a, short b) {
+    long long r = (-((long long)a * b)) >> 15;
+    return vc_clamp_s16((int)r);
+}
+
+static void test_accum_values(void) {
+    printf("--- Accumulate value checks ---\n");
+
+    TRY_BEGIN("dadds_h") {
+        mxu2_v8i16 acc = LOAD_H(C_H);
+        mxu2_v16i8 a = LOAD_B(A_B), b = LOAD_B(B_B);
+        mxu2_v8i16 got = mxu2_dadds_h(acc, a, b);
+        short exp[8];
+        for (int i = 0; i < 8; i++)
+            exp[i] = (short)(C_H[i] + A_B[2*i]*B_B[2*i] + A_B[2*i+1]*B_B[2*i+1]);
+        CHECK("dadds_h", &got, exp, 16);
+    } TRY_END();
+
+    TRY_BEGIN("dadds_w") {
+        mxu2_v4i32 acc = MXU2_LOAD(C_W);
+        mxu2_v8i16 a = LOAD_H(A_H), b = LOAD_H(B_H);
+        mxu2_v4i32 got = mxu2_dadds_w(acc, a, b);
+        int exp[4];
+        for (int i = 0; i < 4; i++)
+            exp[i] = C_W[i] + A_H[2*i]*B_H[2*i] + A_H[2*i+1]*B_H[2*i+1];
+        CHECK("dadds_w", &got, exp, 16);
+    } TRY_END();
+
+    TRY_BEGIN("dsubs_h") {
+        mxu2_v8i16 acc = LOAD_H(C_H);
+        mxu2_v16i8 a = LOAD_B(A_B), b = LOAD_B(B_B);
+        mxu2_v8i16 got = mxu2_dsubs_h(acc, a, b);
+        short exp[8];
+        for (int i = 0; i < 8; i++)
+            exp[i] = (short)(C_H[i] - (A_B[2*i]*B_B[2*i] + A_B[2*i+1]*B_B[2*i+1]));
+        CHECK("dsubs_h", &got, exp, 16);
+    } TRY_END();
+
+    TRY_BEGIN("maddq_h") {
+        mxu2_v8i16 acc = LOAD_H(C_H);
+        mxu2_v8i16 a = LOAD_H(A_H), b = LOAD_H(B_H);
+        mxu2_v8i16 got = mxu2_maddq_h(acc, a, b);
+        short exp[8];
+        for (int i = 0; i < 8; i++)
+            exp[i] = vc_clamp_s16(C_H[i] + vc_mulq_h(A_H[i], B_H[i]));
+        CHECK("maddq_h", &got, exp, 16);
+    } TRY_END();
+
+    TRY_BEGIN("msubq_h") {
+        mxu2_v8i16 acc = LOAD_H(C_H);
+        mxu2_v8i16 a = LOAD_H(A_H), b = LOAD_H(B_H);
+        mxu2_v8i16 got = mxu2_msubq_h(acc, a, b);
+        short exp[8];
+        for (int i = 0; i < 8; i++)
+            exp[i] = vc_clamp_s16(C_H[i] + vc_msubq_term_h(A_H[i], B_H[i]));
+        CHECK("msubq_h", &got, exp, 16);
+    } TRY_END();
+
+    TRY_BEGIN("fmadd_w") {
+        float CF[4] __attribute__((aligned(16))) = {1.0f, 2.0f, 3.0f, 4.0f};
+        mxu2_v4f32 acc = *(mxu2_v4f32 *)CF;
+        mxu2_v4f32 a = *(mxu2_v4f32 *)A_F, b = *(mxu2_v4f32 *)B_F;
+        mxu2_v4f32 got = mxu2_fmadd_w(acc, a, b);
+        float exp[4];
+        for (int i = 0; i < 4; i++) exp[i] = CF[i] + A_F[i]*B_F[i];
+        CHECK("fmadd_w", &got, exp, 16);
+    } TRY_END();
+
+    TRY_BEGIN("mtcpuu_b") {
+        mxu2_v4i32 v = MXU2_LOAD(A_B);
+        CHECK_SCALAR("mtcpuu_b[1]", (int)mxu2_mtcpuu_b((mxu2_v16i8)v, 1), 255);
+        CHECK_SCALAR("mtcpus_b[1]", mxu2_mtcpus_b((mxu2_v16i8)v, 1), -1);
+    } TRY_END();
+
+    TRY_BEGIN("mtcpuu_h") {
+        mxu2_v4i32 v = MXU2_LOAD(A_H);
+        CHECK_SCALAR("mtcpuu_h[1]", (int)mxu2_mtcpuu_h((mxu2_v8i16)v, 1), 65436);
+        CHECK_SCALAR("mtcpus_h[1]", mxu2_mtcpus_h((mxu2_v8i16)v, 1), -100);
+    } TRY_END();
 }
 
 int main(void) {
@@ -1020,6 +1121,7 @@ int main(void) {
     test_branch();
     test_loadstore();
     test_cfcmxu();
+    test_accum_values();
     test_bulk_no_sigill();
 
     printf("\n=== Results: %d PASS, %d FAIL, %d SKIP ===\n",

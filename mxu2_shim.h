@@ -224,52 +224,6 @@ typedef float          mxu2_v4f32  __attribute__((vector_size(16), aligned(16)))
  * Operation implementations
  * ========================================================================= */
 
-#ifndef __mips_mxu2
-
-/* --- Load / Store --- */
-
-static __inline__ mxu2_v4i32 mxu2_load(const void *ptr)
-{
-    mxu2_v4i32 result __attribute__((aligned(16)));
-    __asm__ __volatile__ (
-        ".set push\n\t"
-        ".set noreorder\n\t"
-        ".set noat\n\t"
-        "move  $t0, %[_p]\n\t"
-        _MXU2_WORD(_MXU2_W_LU1Q_VPR0)
-        "move  $t0, %[_r]\n\t"
-        _MXU2_WORD(_MXU2_SU1Q(8, 0, 0))
-        ".set pop\n\t"
-        :
-        : [_p] "r"(ptr), [_r] "r"(&result)
-        : "$t0", "memory"
-    );
-    return result;
-}
-
-static __inline__ void mxu2_store(void *ptr, mxu2_v4i32 v)
-{
-    mxu2_v4i32 tmp __attribute__((aligned(16))) = v;
-    __asm__ __volatile__ (
-        ".set push\n\t"
-        ".set noreorder\n\t"
-        ".set noat\n\t"
-        "move  $t0, %[_t]\n\t"
-        _MXU2_WORD(_MXU2_W_LU1Q_VPR0)
-        "move  $t0, %[_p]\n\t"
-        _MXU2_WORD(_MXU2_SU1Q(8, 0, 0))
-        ".set pop\n\t"
-        :
-        : [_t] "r"(&tmp), [_p] "r"(ptr)
-        : "$t0", "memory"
-    );
-}
-
-#define MXU2_LOAD(ptr)      mxu2_load(ptr)
-#define MXU2_STORE(ptr, v)  mxu2_store((ptr), (v))
-
-/* --- Runtime detection --- */
-
 /*
  * mxu2_available() - test whether MXU2 works on this CPU
  *
@@ -323,6 +277,101 @@ static __inline__ int mxu2_available(void)
     sigaction(SIGILL, &old, (void *)0);
     return cached;
 }
+
+/* --- Branch predicates (bnez/beqz) ---
+   Common C for both modes: the value-returning predicate form has no
+   reason to use the hardware branch instructions (whose 10-bit offset
+   cannot be range-relaxed by the assembler); direct users can reach
+   them via __builtin_mxu2_* when writing real loop branches.  */
+
+static __inline__ int mxu2_bnez16b(mxu2_v16u8 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) != 0;
+}
+static __inline__ int mxu2_bnez8h(mxu2_v8u16 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) != 0;
+}
+static __inline__ int mxu2_bnez4w(mxu2_v4u32 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) != 0;
+}
+static __inline__ int mxu2_bnez2d(mxu2_v4u32 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) != 0;
+}
+static __inline__ int mxu2_bnez1q(mxu2_v16u8 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) != 0;
+}
+static __inline__ int mxu2_beqz16b(mxu2_v16u8 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) == 0;
+}
+static __inline__ int mxu2_beqz8h(mxu2_v8u16 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) == 0;
+}
+static __inline__ int mxu2_beqz4w(mxu2_v4u32 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) == 0;
+}
+static __inline__ int mxu2_beqz2d(mxu2_v4u32 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) == 0;
+}
+static __inline__ int mxu2_beqz1q(mxu2_v16u8 v) {
+    unsigned int *p = (unsigned int *)&v;
+    return (p[0] | p[1] | p[2] | p[3]) == 0;
+}
+
+
+#ifndef __mips_mxu2
+
+/* --- Load / Store --- */
+
+static __inline__ mxu2_v4i32 mxu2_load(const void *ptr)
+{
+    mxu2_v4i32 result __attribute__((aligned(16)));
+    __asm__ __volatile__ (
+        ".set push\n\t"
+        ".set noreorder\n\t"
+        ".set noat\n\t"
+        "move  $t0, %[_p]\n\t"
+        _MXU2_WORD(_MXU2_W_LU1Q_VPR0)
+        "move  $t0, %[_r]\n\t"
+        _MXU2_WORD(_MXU2_SU1Q(8, 0, 0))
+        ".set pop\n\t"
+        :
+        : [_p] "r"(ptr), [_r] "r"(&result)
+        : "$t0", "memory"
+    );
+    return result;
+}
+
+static __inline__ void mxu2_store(void *ptr, mxu2_v4i32 v)
+{
+    mxu2_v4i32 tmp __attribute__((aligned(16))) = v;
+    __asm__ __volatile__ (
+        ".set push\n\t"
+        ".set noreorder\n\t"
+        ".set noat\n\t"
+        "move  $t0, %[_t]\n\t"
+        _MXU2_WORD(_MXU2_W_LU1Q_VPR0)
+        "move  $t0, %[_p]\n\t"
+        _MXU2_WORD(_MXU2_SU1Q(8, 0, 0))
+        ".set pop\n\t"
+        :
+        : [_t] "r"(&tmp), [_p] "r"(ptr)
+        : "$t0", "memory"
+    );
+}
+
+#define MXU2_LOAD(ptr)      mxu2_load(ptr)
+#define MXU2_STORE(ptr, v)  mxu2_store((ptr), (v))
+
+/* --- Runtime detection --- */
+
 
 /* --- 128-bit logic --- */
 
@@ -378,17 +427,17 @@ static __inline__ mxu2_v4i32 mxu2_clts_w(mxu2_v4i32 a, mxu2_v4i32 b) {
 static __inline__ mxu2_v4i32 mxu2_clts_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(0, 1, 0, 2, 0x33)); return r;
 }
-static __inline__ mxu2_v16u8 mxu2_cltu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x34)); return (mxu2_v16u8)r;
+static __inline__ mxu2_v16i8 mxu2_cltu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x34)); return (mxu2_v16i8)r;
 }
-static __inline__ mxu2_v8u16 mxu2_cltu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x35)); return (mxu2_v8u16)r;
+static __inline__ mxu2_v8i16 mxu2_cltu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x35)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4u32 mxu2_cltu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x36)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4i32 mxu2_cltu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x36)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4u32 mxu2_cltu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x37)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4i32 mxu2_cltu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x37)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v16i8 mxu2_cles_b(mxu2_v16i8 a, mxu2_v16i8 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x38)); return (mxu2_v16i8)r;
@@ -402,17 +451,17 @@ static __inline__ mxu2_v4i32 mxu2_cles_w(mxu2_v4i32 a, mxu2_v4i32 b) {
 static __inline__ mxu2_v4i32 mxu2_cles_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(0, 1, 0, 2, 0x3B)); return r;
 }
-static __inline__ mxu2_v16u8 mxu2_cleu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3C)); return (mxu2_v16u8)r;
+static __inline__ mxu2_v16i8 mxu2_cleu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3C)); return (mxu2_v16i8)r;
 }
-static __inline__ mxu2_v8u16 mxu2_cleu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3D)); return (mxu2_v8u16)r;
+static __inline__ mxu2_v8i16 mxu2_cleu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3D)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4u32 mxu2_cleu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3E)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4i32 mxu2_cleu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3E)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4u32 mxu2_cleu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3F)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4i32 mxu2_cleu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(0, 1, 0, 2, 0x3F)); return (mxu2_v4i32)r;
 }
 
 /* --- Min / Max --- */
@@ -583,17 +632,17 @@ static __inline__ mxu2_v4i32 mxu2_addas_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x0B)); return r;
 }
 /* sub abs unsigned */
-static __inline__ mxu2_v16i8 mxu2_subua_b(mxu2_v16i8 a, mxu2_v16i8 b) {
+static __inline__ mxu2_v16i8 mxu2_subua_b(mxu2_v16u8 a, mxu2_v16u8 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x0C)); return (mxu2_v16i8)r;
 }
-static __inline__ mxu2_v8i16 mxu2_subua_h(mxu2_v8i16 a, mxu2_v8i16 b) {
+static __inline__ mxu2_v8i16 mxu2_subua_h(mxu2_v8u16 a, mxu2_v8u16 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x0D)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_subua_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x0E)); return r;
+static __inline__ mxu2_v4i32 mxu2_subua_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x0E)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_subua_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x0F)); return r;
+static __inline__ mxu2_v4i32 mxu2_subua_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x0F)); return (mxu2_v4i32)r;
 }
 /* add signed saturated */
 static __inline__ mxu2_v16i8 mxu2_addss_b(mxu2_v16i8 a, mxu2_v16i8 b) {
@@ -622,30 +671,30 @@ static __inline__ mxu2_v4i32 mxu2_subss_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x17)); return r;
 }
 /* add unsigned saturated */
-static __inline__ mxu2_v16i8 mxu2_adduu_b(mxu2_v16i8 a, mxu2_v16i8 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x18)); return (mxu2_v16i8)r;
+static __inline__ mxu2_v16u8 mxu2_adduu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x18)); return (mxu2_v16u8)r;
 }
-static __inline__ mxu2_v8i16 mxu2_adduu_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x19)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8u16 mxu2_adduu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x19)); return (mxu2_v8u16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_adduu_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x1A)); return r;
+static __inline__ mxu2_v4u32 mxu2_adduu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1A)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_adduu_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x1B)); return r;
+static __inline__ mxu2_v4u32 mxu2_adduu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1B)); return (mxu2_v4u32)r;
 }
 /* sub unsigned saturated */
-static __inline__ mxu2_v16i8 mxu2_subuu_b(mxu2_v16i8 a, mxu2_v16i8 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1C)); return (mxu2_v16i8)r;
+static __inline__ mxu2_v16u8 mxu2_subuu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1C)); return (mxu2_v16u8)r;
 }
-static __inline__ mxu2_v8i16 mxu2_subuu_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1D)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8u16 mxu2_subuu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1D)); return (mxu2_v8u16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_subuu_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x1E)); return r;
+static __inline__ mxu2_v4u32 mxu2_subuu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1E)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_subuu_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x1F)); return r;
+static __inline__ mxu2_v4u32 mxu2_subuu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x1F)); return (mxu2_v4u32)r;
 }
 /* add wrapping */
 static __inline__ mxu2_v16i8 mxu2_add_b(mxu2_v16i8 a, mxu2_v16i8 b) {
@@ -661,17 +710,17 @@ static __inline__ mxu2_v4i32 mxu2_add_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x23)); return r;
 }
 /* sub unsigned from signed */
-static __inline__ mxu2_v16i8 mxu2_subus_b(mxu2_v16i8 a, mxu2_v16i8 b) {
+static __inline__ mxu2_v16i8 mxu2_subus_b(mxu2_v16u8 a, mxu2_v16u8 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x24)); return (mxu2_v16i8)r;
 }
-static __inline__ mxu2_v8i16 mxu2_subus_h(mxu2_v8i16 a, mxu2_v8i16 b) {
+static __inline__ mxu2_v8i16 mxu2_subus_h(mxu2_v8u16 a, mxu2_v8u16 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x25)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_subus_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x26)); return r;
+static __inline__ mxu2_v4i32 mxu2_subus_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x26)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_subus_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x27)); return r;
+static __inline__ mxu2_v4i32 mxu2_subus_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x27)); return (mxu2_v4i32)r;
 }
 /* shift left logical */
 static __inline__ mxu2_v16i8 mxu2_sll_b(mxu2_v16i8 a, mxu2_v16i8 b) {
@@ -726,29 +775,29 @@ static __inline__ mxu2_v4i32 mxu2_avers_w(mxu2_v4i32 a, mxu2_v4i32 b) {
 static __inline__ mxu2_v4i32 mxu2_avers_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x37)); return r;
 }
-static __inline__ mxu2_v16i8 mxu2_aveu_b(mxu2_v16i8 a, mxu2_v16i8 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x38)); return (mxu2_v16i8)r;
+static __inline__ mxu2_v16u8 mxu2_aveu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x38)); return (mxu2_v16u8)r;
 }
-static __inline__ mxu2_v8i16 mxu2_aveu_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x39)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8u16 mxu2_aveu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x39)); return (mxu2_v8u16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_aveu_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x3A)); return r;
+static __inline__ mxu2_v4u32 mxu2_aveu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3A)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_aveu_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x3B)); return r;
+static __inline__ mxu2_v4u32 mxu2_aveu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3B)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v16i8 mxu2_averu_b(mxu2_v16i8 a, mxu2_v16i8 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3C)); return (mxu2_v16i8)r;
+static __inline__ mxu2_v16u8 mxu2_averu_b(mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3C)); return (mxu2_v16u8)r;
 }
-static __inline__ mxu2_v8i16 mxu2_averu_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3D)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8u16 mxu2_averu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3D)); return (mxu2_v8u16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_averu_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x3E)); return r;
+static __inline__ mxu2_v4u32 mxu2_averu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3E)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_averu_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(1, 1, 0, 2, 0x3F)); return r;
+static __inline__ mxu2_v4u32 mxu2_averu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(1, 1, 0, 2, 0x3F)); return (mxu2_v4u32)r;
 }
 
 /* --- Multiply / Divide / Modulo --- */
@@ -845,59 +894,59 @@ static __inline__ mxu2_v4i32 mxu2_msub_d(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i3
 
 /* --- Dot product / double-width add-sub (h/w/d only) --- */
 
-static __inline__ mxu2_v8i16 mxu2_dotps_h(mxu2_v8i16 a, mxu2_v8i16 b) {
+static __inline__ mxu2_v8i16 mxu2_dotps_h(mxu2_v16i8 a, mxu2_v16i8 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x21)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_dotps_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(2, 1, 0, 2, 0x22)); return r;
+static __inline__ mxu2_v4i32 mxu2_dotps_w(mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x22)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_dotps_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(2, 1, 0, 2, 0x23)); return r;
 }
-static __inline__ mxu2_v8u16 mxu2_dotpu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
+static __inline__ mxu2_v8u16 mxu2_dotpu_h(mxu2_v16u8 a, mxu2_v16u8 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x29)); return (mxu2_v8u16)r;
 }
-static __inline__ mxu2_v4u32 mxu2_dotpu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
+static __inline__ mxu2_v4u32 mxu2_dotpu_w(mxu2_v8u16 a, mxu2_v8u16 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x2A)); return (mxu2_v4u32)r;
 }
 static __inline__ mxu2_v4u32 mxu2_dotpu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x2B)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v8i16 mxu2_dadds_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x25)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8i16 mxu2_dadds_h(mxu2_v8i16 acc, mxu2_v16i8 a, mxu2_v16i8 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x25)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_dadds_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(2, 1, 0, 2, 0x26)); return r;
+static __inline__ mxu2_v4i32 mxu2_dadds_w(mxu2_v4i32 acc, mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x26)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_dadds_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(2, 1, 0, 2, 0x27)); return r;
+static __inline__ mxu2_v4i32 mxu2_dadds_d(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x27)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v8u16 mxu2_daddu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x2D)); return (mxu2_v8u16)r;
+static __inline__ mxu2_v8u16 mxu2_daddu_h(mxu2_v8u16 acc, mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x2D)); return (mxu2_v8u16)r;
 }
-static __inline__ mxu2_v4u32 mxu2_daddu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x2E)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4u32 mxu2_daddu_w(mxu2_v4u32 acc, mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x2E)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4u32 mxu2_daddu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x2F)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4u32 mxu2_daddu_d(mxu2_v4u32 acc, mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x2F)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v8i16 mxu2_dsubs_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x35)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8i16 mxu2_dsubs_h(mxu2_v8i16 acc, mxu2_v16i8 a, mxu2_v16i8 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x35)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_dsubs_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(2, 1, 0, 2, 0x36)); return r;
+static __inline__ mxu2_v4i32 mxu2_dsubs_w(mxu2_v4i32 acc, mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x36)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_dsubs_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(2, 1, 0, 2, 0x37)); return r;
+static __inline__ mxu2_v4i32 mxu2_dsubs_d(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x37)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v8u16 mxu2_dsubu_h(mxu2_v8u16 a, mxu2_v8u16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x3D)); return (mxu2_v8u16)r;
+static __inline__ mxu2_v8i16 mxu2_dsubu_h(mxu2_v8i16 acc, mxu2_v16u8 a, mxu2_v16u8 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x3D)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4u32 mxu2_dsubu_w(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x3E)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4i32 mxu2_dsubu_w(mxu2_v4i32 acc, mxu2_v8u16 a, mxu2_v8u16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x3E)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4u32 mxu2_dsubu_d(mxu2_v4u32 a, mxu2_v4u32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(2, 1, 0, 2, 0x3F)); return (mxu2_v4u32)r;
+static __inline__ mxu2_v4i32 mxu2_dsubu_d(mxu2_v4i32 acc, mxu2_v4u32 a, mxu2_v4u32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(2, 1, 0, 2, 0x3F)); return (mxu2_v4i32)r;
 }
 
 /* --- Floating-point arithmetic --- */
@@ -926,41 +975,41 @@ static __inline__ mxu2_v4f32 mxu2_fdiv_w(mxu2_v4f32 a, mxu2_v4f32 b) {
 static __inline__ mxu2_v4i32 mxu2_fdiv_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x07)); return r;
 }
-static __inline__ mxu2_v4f32 mxu2_fmadd_w(mxu2_v4f32 a, mxu2_v4f32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x08)); return (mxu2_v4f32)r;
+static __inline__ mxu2_v4f32 mxu2_fmadd_w(mxu2_v4f32 acc, mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x08)); return (mxu2_v4f32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_fmadd_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x09)); return r;
+static __inline__ mxu2_v4i32 mxu2_fmadd_d(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x09)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4f32 mxu2_fmsub_w(mxu2_v4f32 a, mxu2_v4f32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x0A)); return (mxu2_v4f32)r;
+static __inline__ mxu2_v4f32 mxu2_fmsub_w(mxu2_v4f32 acc, mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x0A)); return (mxu2_v4f32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_fmsub_d(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x0B)); return r;
+static __inline__ mxu2_v4i32 mxu2_fmsub_d(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x0B)); return (mxu2_v4i32)r;
 }
 
 /* --- Floating-point compare / min / max --- */
 
-static __inline__ mxu2_v4f32 mxu2_fcor_w(mxu2_v4f32 a, mxu2_v4f32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x10)); return (mxu2_v4f32)r;
+static __inline__ mxu2_v4i32 mxu2_fcor_w(mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x10)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_fcor_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x11)); return r;
 }
-static __inline__ mxu2_v4f32 mxu2_fceq_w(mxu2_v4f32 a, mxu2_v4f32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x12)); return (mxu2_v4f32)r;
+static __inline__ mxu2_v4i32 mxu2_fceq_w(mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x12)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_fceq_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x13)); return r;
 }
-static __inline__ mxu2_v4f32 mxu2_fclt_w(mxu2_v4f32 a, mxu2_v4f32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x14)); return (mxu2_v4f32)r;
+static __inline__ mxu2_v4i32 mxu2_fclt_w(mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x14)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_fclt_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x15)); return r;
 }
-static __inline__ mxu2_v4f32 mxu2_fcle_w(mxu2_v4f32 a, mxu2_v4f32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x16)); return (mxu2_v4f32)r;
+static __inline__ mxu2_v4i32 mxu2_fcle_w(mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x16)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_fcle_d(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x17)); return r;
@@ -1004,44 +1053,44 @@ static __inline__ mxu2_v8i16 mxu2_mulqr_h(mxu2_v8i16 a, mxu2_v8i16 b) {
 static __inline__ mxu2_v4i32 mxu2_mulqr_w(mxu2_v4i32 a, mxu2_v4i32 b) {
     mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x2B)); return r;
 }
-static __inline__ mxu2_v8i16 mxu2_maddq_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x30)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8i16 mxu2_maddq_h(mxu2_v8i16 acc, mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x30)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_maddq_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x31)); return r;
+static __inline__ mxu2_v4i32 mxu2_maddq_w(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x31)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v8i16 mxu2_maddqr_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x32)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8i16 mxu2_maddqr_h(mxu2_v8i16 acc, mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x32)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_maddqr_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x33)); return r;
+static __inline__ mxu2_v4i32 mxu2_maddqr_w(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x33)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v8i16 mxu2_msubq_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x34)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8i16 mxu2_msubq_h(mxu2_v8i16 acc, mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x34)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_msubq_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x35)); return r;
+static __inline__ mxu2_v4i32 mxu2_msubq_w(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x35)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v8i16 mxu2_msubqr_h(mxu2_v8i16 a, mxu2_v8i16 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x36)); return (mxu2_v8i16)r;
+static __inline__ mxu2_v8i16 mxu2_msubqr_h(mxu2_v8i16 acc, mxu2_v8i16 a, mxu2_v8i16 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x36)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_msubqr_w(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x37)); return r;
+static __inline__ mxu2_v4i32 mxu2_msubqr_w(mxu2_v4i32 acc, mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_ACCOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, (mxu2_v4i32)acc, _MXU2_OP(8, 1, 0, 2, 0x37)); return (mxu2_v4i32)r;
 }
 
 /* --- Vector format conversions (binary: pack two vectors) --- */
 
-static __inline__ mxu2_v4i32 mxu2_vcvths(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x0C)); return r;
+static __inline__ mxu2_v8i16 mxu2_vcvths(mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x0C)); return (mxu2_v8i16)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtsd(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x0D)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtsd(mxu2_v4i32 a, mxu2_v4i32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x0D)); return (mxu2_v4f32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtqhs(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x0E)); return r;
+static __inline__ mxu2_v8i16 mxu2_vcvtqhs(mxu2_v4f32 a, mxu2_v4f32 b) {
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x0E)); return (mxu2_v8i16)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vcvtqwd(mxu2_v4i32 a, mxu2_v4i32 b) {
-    mxu2_v4i32 r; _MXU2_BINOP(r, a, b, _MXU2_OP(8, 1, 0, 2, 0x0F)); return r;
+    mxu2_v4i32 r; _MXU2_BINOP(r, (mxu2_v4i32)a, (mxu2_v4i32)b, _MXU2_OP(8, 1, 0, 2, 0x0F)); return (mxu2_v4i32)r;
 }
 
 /* --- Unary: compare-to-zero (sets mask) --- */
@@ -1136,14 +1185,14 @@ static __inline__ mxu2_v4i32 mxu2_bcnt_d(mxu2_v4i32 a) {
 
 /* --- Unary: float sqrt / classify --- */
 
-static __inline__ mxu2_v4i32 mxu2_fsqrt_w(mxu2_v4i32 a) {
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x00)); return r;
+static __inline__ mxu2_v4f32 mxu2_fsqrt_w(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x00)); return (mxu2_v4f32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_fsqrt_d(mxu2_v4i32 a) {
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x01)); return r;
 }
-static __inline__ mxu2_v4i32 mxu2_fclass_w(mxu2_v4i32 a) {
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x06)); return r;
+static __inline__ mxu2_v4i32 mxu2_fclass_w(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x06)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_fclass_d(mxu2_v4i32 a) {
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x07)); return r;
@@ -1151,68 +1200,68 @@ static __inline__ mxu2_v4i32 mxu2_fclass_d(mxu2_v4i32 a) {
 
 /* --- Unary: vector type conversions --- */
 
-static __inline__ mxu2_v4i32 mxu2_vcvtesh(mxu2_v4i32 a) { /* even h->s */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x20)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtesh(mxu2_v8i16 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x20)); return (mxu2_v4f32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvteds(mxu2_v4i32 a) { /* even s->d */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x21)); return r;
+static __inline__ mxu2_v4i32 mxu2_vcvteds(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x21)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtosh(mxu2_v4i32 a) { /* odd h->s */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x28)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtosh(mxu2_v8i16 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x28)); return (mxu2_v4f32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtods(mxu2_v4i32 a) { /* odd s->d */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x29)); return r;
+static __inline__ mxu2_v4i32 mxu2_vcvtods(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x29)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtssw(mxu2_v4i32 a) { /* si32->f32 */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x08)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtssw(mxu2_v4i32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x08)); return (mxu2_v4f32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vcvtsdl(mxu2_v4i32 a) { /* si64->f64 */
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x09)); return r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtusw(mxu2_v4i32 a) { /* u32->f32 */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x0A)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtusw(mxu2_v4u32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x0A)); return (mxu2_v4f32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtudl(mxu2_v4i32 a) { /* u64->f64 */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x0B)); return r;
+static __inline__ mxu2_v4i32 mxu2_vcvtudl(mxu2_v4u32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x0B)); return (mxu2_v4i32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtsws(mxu2_v4i32 a) { /* f32->si32 */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x0C)); return r;
+static __inline__ mxu2_v4i32 mxu2_vcvtsws(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x0C)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vcvtsld(mxu2_v4i32 a) { /* f64->si64 */
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x0D)); return r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtuws(mxu2_v4i32 a) { /* f32->u32 */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x0E)); return r;
+static __inline__ mxu2_v4u32 mxu2_vcvtuws(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x0E)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtuld(mxu2_v4i32 a) { /* f64->u64 */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x0F)); return r;
+static __inline__ mxu2_v4u32 mxu2_vcvtuld(mxu2_v4i32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x0F)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtrws(mxu2_v4i32 a) { /* f32->si32 round */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x1C)); return r;
+static __inline__ mxu2_v4i32 mxu2_vcvtrws(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x1C)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vcvtrld(mxu2_v4i32 a) { /* f64->si64 round */
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x1D)); return r;
 }
-static __inline__ mxu2_v4i32 mxu2_vtruncsws(mxu2_v4i32 a) { /* f32->si32 trunc */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x14)); return r;
+static __inline__ mxu2_v4i32 mxu2_vtruncsws(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x14)); return (mxu2_v4i32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vtruncsld(mxu2_v4i32 a) { /* f64->si64 trunc */
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x15)); return r;
 }
-static __inline__ mxu2_v4i32 mxu2_vtruncuws(mxu2_v4i32 a) { /* f32->u32 trunc */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x16)); return r;
+static __inline__ mxu2_v4u32 mxu2_vtruncuws(mxu2_v4f32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x16)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vtrunculd(mxu2_v4i32 a) { /* f64->u64 trunc */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x17)); return r;
+static __inline__ mxu2_v4u32 mxu2_vtrunculd(mxu2_v4i32 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x17)); return (mxu2_v4u32)r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtqesh(mxu2_v4i32 a) { /* Q even h->s */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x30)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtqesh(mxu2_v8i16 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x30)); return (mxu2_v4f32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vcvtqedw(mxu2_v4i32 a) { /* Q even w->d */
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x31)); return r;
 }
-static __inline__ mxu2_v4i32 mxu2_vcvtqosh(mxu2_v4i32 a) { /* Q odd h->s */
-    mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x38)); return r;
+static __inline__ mxu2_v4f32 mxu2_vcvtqosh(mxu2_v8i16 a) {
+    mxu2_v4i32 r; _MXU2_UNIOP(r, (mxu2_v4i32)a, _MXU2_OP(14, 1, 0, 2, 0x38)); return (mxu2_v4f32)r;
 }
 static __inline__ mxu2_v4i32 mxu2_vcvtqodw(mxu2_v4i32 a) { /* Q odd w->d */
     mxu2_v4i32 r; _MXU2_UNIOP(r, a, _MXU2_OP(14, 1, 0, 2, 0x39)); return r;
@@ -1346,19 +1395,19 @@ static __inline__ mxu2_v4i32 mxu2_vcvtqodw(mxu2_v4i32 a) { /* Q odd w->d */
 #define mxu2_andib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
         ((0x1C<<26)|(0<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
-    (mxu2_v16u8)_r; })
+    (mxu2_v16i8)_r; })
 #define mxu2_norib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
         ((0x1C<<26)|(8<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
-    (mxu2_v16u8)_r; })
+    (mxu2_v16i8)_r; })
 #define mxu2_orib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
         ((0x1C<<26)|(16<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
-    (mxu2_v16u8)_r; })
+    (mxu2_v16i8)_r; })
 #define mxu2_xorib(v, imm) __extension__({ \
     mxu2_v4i32 _r; _MXU2_UNIOP(_r, (mxu2_v4i32)(v), \
         ((0x1C<<26)|(24<<21)|((imm)<<16)|(0<<11)|(2<<6)|0x30)); \
-    (mxu2_v16u8)_r; })
+    (mxu2_v16i8)_r; })
 
 /* --- SPECIAL2 immediate: replicate element --- */
 
@@ -1392,49 +1441,6 @@ static __inline__ mxu2_v16i8 mxu2_shufv(mxu2_v16i8 a, mxu2_v16i8 b, mxu2_v16i8 c
     _MXU2_TRIOP(r, (mxu2_v4i32)c, (mxu2_v4i32)a, (mxu2_v4i32)b,
         ((0x1C<<26)|(0<<21)|(1<<16)|(2<<11)|(3<<6)|0x18));
     return (mxu2_v16i8)r;
-}
-
-/* --- Branch predicates (bnez/beqz) --- */
-
-static __inline__ int mxu2_bnez16b(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) != 0;
-}
-static __inline__ int mxu2_bnez8h(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) != 0;
-}
-static __inline__ int mxu2_bnez4w(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) != 0;
-}
-static __inline__ int mxu2_bnez2d(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) != 0;
-}
-static __inline__ int mxu2_bnez1q(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) != 0;
-}
-static __inline__ int mxu2_beqz16b(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) == 0;
-}
-static __inline__ int mxu2_beqz8h(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) == 0;
-}
-static __inline__ int mxu2_beqz4w(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) == 0;
-}
-static __inline__ int mxu2_beqz2d(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) == 0;
-}
-static __inline__ int mxu2_beqz1q(mxu2_v16i8 v) {
-    unsigned int *p = (unsigned int *)&v;
-    return (p[0] | p[1] | p[2] | p[3]) == 0;
 }
 
 /* --- Control register access (cfcmxu/ctcmxu) --- */
@@ -1516,10 +1522,10 @@ static __inline__ void mxu2_su1q(mxu2_v16i8 v, void *ptr, int off) {
 
 /* --- Scalar extract VPR -> GPR (mtcpus/mtcpuu) --- */
 
-static __inline__ int mxu2_mtcpus_b(mxu2_v4i32 v, unsigned char lane) {
+static __inline__ int mxu2_mtcpus_b(mxu2_v16i8 v, unsigned char lane) {
     return (int)((signed char *)&v)[lane];
 }
-static __inline__ int mxu2_mtcpus_h(mxu2_v4i32 v, unsigned char lane) {
+static __inline__ int mxu2_mtcpus_h(mxu2_v8i16 v, unsigned char lane) {
     return (int)((short *)&v)[lane];
 }
 static __inline__ int mxu2_mtcpus_w(mxu2_v4i32 v, unsigned char lane) {
@@ -1528,10 +1534,10 @@ static __inline__ int mxu2_mtcpus_w(mxu2_v4i32 v, unsigned char lane) {
 static __inline__ int mxu2_mtcpus_d(mxu2_v4i32 v, unsigned char lane) {
     return (int)((int *)&v)[lane];
 }
-static __inline__ unsigned int mxu2_mtcpuu_b(mxu2_v4i32 v, unsigned char lane) {
+static __inline__ unsigned int mxu2_mtcpuu_b(mxu2_v16i8 v, unsigned char lane) {
     return (unsigned int)((unsigned char *)&v)[lane];
 }
-static __inline__ unsigned int mxu2_mtcpuu_h(mxu2_v4i32 v, unsigned char lane) {
+static __inline__ unsigned int mxu2_mtcpuu_h(mxu2_v8i16 v, unsigned char lane) {
     return (unsigned int)((unsigned short *)&v)[lane];
 }
 static __inline__ unsigned int mxu2_mtcpuu_w(mxu2_v4i32 v, unsigned char lane) {
@@ -1563,8 +1569,9 @@ static __inline__ mxu2_v8i16 mxu2_mfcpu_h(int val) {
 static __inline__ mxu2_v4i32 mxu2_mfcpu_w(int val) {
     return (mxu2_v4i32){val,val,val,val};
 }
-static __inline__ mxu2_v4i32 mxu2_mfcpu_d(int val) {
-    return (mxu2_v4i32){val, (val < 0 ? -1 : 0), val, (val < 0 ? -1 : 0)};
+static __inline__ mxu2_v4i32 mxu2_mfcpu_d(long long a) {
+    int lo = (int)a, hi = (int)(a >> 32);
+    return (mxu2_v4i32){lo, hi, lo, hi};
 }
 
 /* --- FPU -> VPR broadcast (mffpu) --- */
@@ -1731,26 +1738,6 @@ static __inline__ mxu2_v4i32 mxu2_bcnt_d(mxu2_v4i32 a) { return (mxu2_v4i32)__bu
 static __inline__ mxu2_v8i16 mxu2_bcnt_h(mxu2_v8i16 a) { return (mxu2_v8i16)__builtin_mxu2_bcnt_h((v8i16)a); }
 // v4i32 __builtin_mxu2_bcnt_w(v4i32)
 static __inline__ mxu2_v4i32 mxu2_bcnt_w(mxu2_v4i32 a) { return (mxu2_v4i32)__builtin_mxu2_bcnt_w((v4i32)a); }
-// int __builtin_mxu2_beqz16b(v16u8)
-static __inline__ int mxu2_beqz16b(mxu2_v16u8 a) { return __builtin_mxu2_beqz16b((v16u8)a); }
-// int __builtin_mxu2_beqz1q(v16u8)
-static __inline__ int mxu2_beqz1q(mxu2_v16u8 a) { return __builtin_mxu2_beqz1q((v16u8)a); }
-// int __builtin_mxu2_beqz2d(v2u64)
-static __inline__ int mxu2_beqz2d(mxu2_v4u32 a) { return __builtin_mxu2_beqz2d((v2u64)a); }
-// int __builtin_mxu2_beqz4w(v4u32)
-static __inline__ int mxu2_beqz4w(mxu2_v4u32 a) { return __builtin_mxu2_beqz4w((v4u32)a); }
-// int __builtin_mxu2_beqz8h(v8u16)
-static __inline__ int mxu2_beqz8h(mxu2_v8u16 a) { return __builtin_mxu2_beqz8h((v8u16)a); }
-// int __builtin_mxu2_bnez16b(v16u8)
-static __inline__ int mxu2_bnez16b(mxu2_v16u8 a) { return __builtin_mxu2_bnez16b((v16u8)a); }
-// int __builtin_mxu2_bnez1q(v16u8)
-static __inline__ int mxu2_bnez1q(mxu2_v16u8 a) { return __builtin_mxu2_bnez1q((v16u8)a); }
-// int __builtin_mxu2_bnez2d(v2u64)
-static __inline__ int mxu2_bnez2d(mxu2_v4u32 a) { return __builtin_mxu2_bnez2d((v2u64)a); }
-// int __builtin_mxu2_bnez4w(v4u32)
-static __inline__ int mxu2_bnez4w(mxu2_v4u32 a) { return __builtin_mxu2_bnez4w((v4u32)a); }
-// int __builtin_mxu2_bnez8h(v8u16)
-static __inline__ int mxu2_bnez8h(mxu2_v8u16 a) { return __builtin_mxu2_bnez8h((v8u16)a); }
 // v16i8 __builtin_mxu2_bselv(v16i8, v16i8, v16i8)
 static __inline__ mxu2_v16i8 mxu2_bselv(mxu2_v16i8 a, mxu2_v16i8 b, mxu2_v16i8 c) { return (mxu2_v16i8)__builtin_mxu2_bselv((v16i8)a, (v16i8)b, (v16i8)c); }
 // v16i8 __builtin_mxu2_ceq_b(v16i8, v16i8)
@@ -1974,9 +1961,9 @@ static __inline__ mxu2_v4f32 mxu2_fsub_w(mxu2_v4f32 a, mxu2_v4f32 b) { return (m
 // v4i32 __builtin_mxu2_insfmxu_w(v4i32, unsigned char, v4i32)
 #define mxu2_insfmxu_w(a, _imm1, c) ((mxu2_v4i32)__builtin_mxu2_insfmxu_w((v4i32)(a), _imm1, (v4i32)(c)))
 // v16i8 __builtin_mxu2_la1q(void *, int)
-#define mxu2_la1q(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_la1q(a, _imm1))
+#define mxu2_la1q(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_la1q(a, (_imm1) * 16))
 // v16i8 __builtin_mxu2_la1qx(void *, int)
-#define mxu2_la1qx(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_la1qx(a, _imm1))
+#define mxu2_la1qx(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_la1qx(a, (_imm1) * 16))
 // v16i8 __builtin_mxu2_li_b(short)
 static __inline__ mxu2_v16i8 mxu2_li_b(short a) { return (mxu2_v16i8)__builtin_mxu2_li_b(a); }
 // v2i64 __builtin_mxu2_li_d(short)
@@ -1994,9 +1981,11 @@ static __inline__ mxu2_v8i16 mxu2_loc_h(mxu2_v8i16 a) { return (mxu2_v8i16)__bui
 // v4i32 __builtin_mxu2_loc_w(v4i32)
 static __inline__ mxu2_v4i32 mxu2_loc_w(mxu2_v4i32 a) { return (mxu2_v4i32)__builtin_mxu2_loc_w((v4i32)a); }
 // v16i8 __builtin_mxu2_lu1q(void *, int)
-#define mxu2_lu1q(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_lu1q(a, _imm1))
+/* Builtin offsets are raw bytes (HW-verified); the shim API counts
+   16-byte blocks, so scale here.  */
+#define mxu2_lu1q(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_lu1q(a, (_imm1) * 16))
 // v16i8 __builtin_mxu2_lu1qx(void *, int)
-#define mxu2_lu1qx(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_lu1qx(a, _imm1))
+#define mxu2_lu1qx(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_lu1qx(a, (_imm1) * 16))
 // v16i8 __builtin_mxu2_lzc_b(v16i8)
 static __inline__ mxu2_v16i8 mxu2_lzc_b(mxu2_v16i8 a) { return (mxu2_v16i8)__builtin_mxu2_lzc_b((v16i8)a); }
 // v2i64 __builtin_mxu2_lzc_d(v2i64)
@@ -2119,6 +2108,20 @@ static __inline__ mxu2_v4i32 mxu2_msubqr_w(mxu2_v4i32 a, mxu2_v4i32 b, mxu2_v4i3
 #define mxu2_mtcpus_h(a, _imm1) __builtin_mxu2_mtcpus_h((v8i16)(a), _imm1)
 // int __builtin_mxu2_mtcpus_w(v4i32, unsigned char)
 #define mxu2_mtcpus_w(a, _imm1) __builtin_mxu2_mtcpus_w((v4i32)(a), _imm1)
+// unsigned int __builtin_mxu2_mtcpuu_b(v16i8, unsigned char)
+#define mxu2_mtcpuu_b(a, _imm1) __builtin_mxu2_mtcpuu_b((v16i8)(a), _imm1)
+// unsigned int __builtin_mxu2_mtcpuu_h(v8i16, unsigned char)
+#define mxu2_mtcpuu_h(a, _imm1) __builtin_mxu2_mtcpuu_h((v8i16)(a), _imm1)
+// unsigned int __builtin_mxu2_mtcpuu_w(v4i32, unsigned char)
+#define mxu2_mtcpuu_w(a, _imm1) __builtin_mxu2_mtcpuu_w((v4i32)(a), _imm1)
+/* 64-bit lane extracts keep the shim v4i32-carrier word-lane semantics;
+   plain C is identical in both modes. */
+static __inline__ int mxu2_mtcpus_d(mxu2_v4i32 v, unsigned char lane) {
+    return (int)((int *)&v)[lane];
+}
+static __inline__ unsigned int mxu2_mtcpuu_d(mxu2_v4i32 v, unsigned char lane) {
+    return (unsigned int)((unsigned int *)&v)[lane];
+}
 // double __builtin_mxu2_mtfpu_d(v2f64, unsigned char)
 #define mxu2_mtfpu_d(a, _imm1) __builtin_mxu2_mtfpu_d((v2f64)(a), _imm1)
 // float __builtin_mxu2_mtfpu_w(v4f32, unsigned char)
@@ -2164,9 +2167,9 @@ static __inline__ mxu2_v16i8 mxu2_orv(mxu2_v16i8 a, mxu2_v16i8 b) { return (mxu2
 // v4i32 __builtin_mxu2_repx_w(v4i32, int)
 #define mxu2_repx_w(a, _imm1) ((mxu2_v4i32)__builtin_mxu2_repx_w((v4i32)(a), _imm1))
 // void __builtin_mxu2_sa1q(v16i8, void *, int)
-#define mxu2_sa1q(a, b, _imm2) __builtin_mxu2_sa1q((v16i8)(a), b, _imm2)
+#define mxu2_sa1q(a, b, _imm2) __builtin_mxu2_sa1q((v16i8)(a), b, (_imm2) * 16)
 // void __builtin_mxu2_sa1qx(v16i8, void *, int)
-#define mxu2_sa1qx(a, b, _imm2) __builtin_mxu2_sa1qx((v16i8)(a), b, _imm2)
+#define mxu2_sa1qx(a, b, _imm2) __builtin_mxu2_sa1qx((v16i8)(a), b, (_imm2) * 16)
 // v16i8 __builtin_mxu2_sats_b(v16i8, unsigned char)
 #define mxu2_sats_b(a, _imm1) ((mxu2_v16i8)__builtin_mxu2_sats_b((v16i8)(a), _imm1))
 // v2i64 __builtin_mxu2_sats_d(v2i64, unsigned char)
@@ -2266,9 +2269,9 @@ static __inline__ mxu2_v4i32 mxu2_srlr_w(mxu2_v4i32 a, mxu2_v4i32 b) { return (m
 // v4i32 __builtin_mxu2_srlri_w(v4i32, unsigned char)
 #define mxu2_srlri_w(a, _imm1) ((mxu2_v4i32)__builtin_mxu2_srlri_w((v4i32)(a), _imm1))
 // void __builtin_mxu2_su1q(v16i8, void *, int)
-#define mxu2_su1q(a, b, _imm2) __builtin_mxu2_su1q((v16i8)(a), b, _imm2)
+#define mxu2_su1q(a, b, _imm2) __builtin_mxu2_su1q((v16i8)(a), b, (_imm2) * 16)
 // void __builtin_mxu2_su1qx(v16i8, void *, int)
-#define mxu2_su1qx(a, b, _imm2) __builtin_mxu2_su1qx((v16i8)(a), b, _imm2)
+#define mxu2_su1qx(a, b, _imm2) __builtin_mxu2_su1qx((v16i8)(a), b, (_imm2) * 16)
 // v16i8 __builtin_mxu2_sub_b(v16i8, v16i8)
 static __inline__ mxu2_v16i8 mxu2_sub_b(mxu2_v16i8 a, mxu2_v16i8 b) { return (mxu2_v16i8)__builtin_mxu2_sub_b((v16i8)a, (v16i8)b); }
 // v2i64 __builtin_mxu2_sub_d(v2i64, v2i64)

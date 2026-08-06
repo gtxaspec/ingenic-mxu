@@ -64,7 +64,9 @@ ssh root@<device> /tmp/test_mxu2
 
 Copy to `package/all-patches/binutils/2.44/` and `package/all-patches/gcc/15.2.0/` in your buildroot tree (gcc16 toolchains: `binutils/2.45.1/` and `gcc/16.1.0/`).
 
-GCC >= 16 note: build the test suites with `-flax-vector-conversions` (gcc 16 tightened vector element-type conversions). The shim's `-mmxu2` delegate mode has API drift (missing `mxu2_mtcpuu_w` delegate, `dadds`/`dsubs` arity) - use the shim without `-mmxu2`, or native builtins directly, until fixed.
+The shim compiles strictly (no `-flax-vector-conversions`) and its `-mmxu2` delegate mode is API-identical to the plain mode: 441/441 tests pass on T20 hardware through both paths. The gcc 16.1.0 patch includes four register-allocation fixes (setjmp + address-taken vector locals previously made LRA loop); the 15.2.0 patch does not have them yet.
+
+Branch builtins caveat: `__builtin_mxu2_bnez*`/`beqz*` emit raw 10-bit-range hardware branches with no assembler relaxation, so keep targets within +/-2KB. The shim's `mxu2_bnez*` predicate API uses plain C instead and has no such limit.
 
 **For upstream submission** (split patch series):
 
