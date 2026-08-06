@@ -6,6 +6,21 @@ Two patches add native MXU2 support to the GNU toolchain:
 - **Binutils 2.44**: assembler, disassembler, 364 opcodes
 - **GCC 15.2.0**: backend, instruction patterns, 382 builtins
 
+Second generation (thingino gcc16 toolchains, binutils 2.45.1 + GCC 16.1.0):
+
+- **`0001-add-ingenic-mxu2-support-2.45.1.patch`**: the 2.44 patch rebased;
+  the opcode rows now precede the UDI rows so SPECIAL2-encoded MXU2
+  instructions disassemble as themselves under `-M mxu2`.
+- **`0001-add-ingenic-mxu2-backend-16.1.0.patch`**: the 15.2.0 backend plus
+  four register-allocation fixes (secondary reload `regno < 0` case,
+  disparaged GPR move alternatives, COP2 move costs, COP2 allocno-class
+  steering). Without them, LRA loops or fails to spill on
+  `sigsetjmp` + address-taken vector locals. The 15.2.0 patch does not
+  carry these fixes yet.
+
+T20-validated with the gcc16 SDK: builtins 382/382, shim 441/441 through
+both the plain and `-mmxu2` delegate paths, dsp 7/7.
+
 ## Applying patches
 
 ### Buildroot / Thingino

@@ -60,9 +60,10 @@ ssh root@<device> /tmp/test_mxu2
 |------|--------|-------------|
 | `patches/0001-add-ingenic-mxu2-support.patch` | binutils 2.44 | Assembler, disassembler, 364 opcodes |
 | `patches/0001-add-ingenic-mxu2-support-2.45.1.patch` | binutils 2.45.1 | Same, rebased; MXU2 rows precede UDI so lu1q/su1q disassemble correctly |
-| `patches/0001-add-ingenic-mxu2-backend.patch` | GCC 15.2.0 / 16.1.0 | Backend, patterns, 382 builtins (applies to both versions unchanged) |
+| `patches/0001-add-ingenic-mxu2-backend.patch` | GCC 15.2.0 | Backend, patterns, 382 builtins |
+| `patches/0001-add-ingenic-mxu2-backend-16.1.0.patch` | GCC 16.1.0 | Same plus four register-allocation fixes (setjmp + address-taken vector locals) |
 
-Copy to `package/all-patches/binutils/2.44/` and `package/all-patches/gcc/15.2.0/` in your buildroot tree (gcc16 toolchains: `binutils/2.45.1/` and `gcc/16.1.0/`).
+Copy to `package/all-patches/binutils/2.44/` and `package/all-patches/gcc/15.2.0/` in your buildroot tree. For the gcc16 toolchains use the 2.45.1 and 16.1.0 patch files in `binutils/2.45.1/` and `gcc/16.1.0/` (drop the version suffix from the file name so buildroot ordering stays stable).
 
 The shim compiles strictly (no `-flax-vector-conversions`) and its `-mmxu2` delegate mode is API-identical to the plain mode: 441/441 tests pass on T20 hardware through both paths. The gcc 16.1.0 patch includes four register-allocation fixes (setjmp + address-taken vector locals previously made LRA loop); the 15.2.0 patch does not have them yet.
 

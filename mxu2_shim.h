@@ -55,8 +55,9 @@
  *     f0x18: shufv (3-op shuffle)
  *
  *   LU1Q/SU1Q (SPECIAL2 load/store):
- *     (0x1C<<26)|(base<<21)|(offset_idx<<11)|(vpr<<6)|funct
- *     funct: LU1Q=0x14, SU1Q=0x1C; addr = base + offset_idx*16
+ *     (0x1C<<26)|(base<<21)|(offset<<11)|(vpr<<6)|funct
+ *     funct: LU1Q=0x14, SU1Q=0x1C; addr = base + offset (RAW BYTES,
+ *     10-bit signed, T20-verified; misaligned access works)
  */
 
 #ifndef MXU2_SHIM_H

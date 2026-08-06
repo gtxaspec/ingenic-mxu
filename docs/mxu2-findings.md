@@ -201,6 +201,22 @@ Build: `mipsel-linux-gnu-gcc -O0 -o mxu_probe mxu_probe.c -static`
 - [ ] Test T32 (updated XBurst1 core)
 - [ ] Determine if MCSR dirty bit gets set after VPR write (read MCSR *after* arithmetic)
 - [x] Port Ingenic GCC 7.2 MXU2 patches to modern GCC for Buildroot/Thingino — shipped on GCC 15.2 + binutils 2.44
+- [ ] Branch relaxation for the MXU2 branch builtins. The hardware branches
+      have a 10-bit offset (<<2, so +/-2KB) and today an out-of-range target
+      is a hard assembler error ("MXU2 branch address range overflow").
+      The vendor left the fix half-built: the `.md` branch patterns already
+      call `mips_output_conditional_branch`, which can emit the inverted
+      branch over an unconditional jump for far targets, but none of them
+      carry `(set_attr "type" "branch")` or a length attribute, so
+      `get_attr_length` always reports 4 and the long form is unreachable.
+      Fix: add the branch type plus a length attribute testing the +/-2KB
+      window against the insn address (mips.md does this for normal
+      branches with the +/-128KB window; the MSA branch insns are the
+      model), in both the 15.2.0 and 16.1.0 gcc patches. Validate with a
+      far-branch test (>2KB of code between branch and target) on T20.
+      Until then: keep `__builtin_mxu2_bnez*`/`beqz*` targets within
+      +/-2KB; the shim's `mxu2_bnez*` predicate API is plain C in both
+      modes and unaffected.
 - [ ] Determine shufv control vector format for stereo interleave/deinterleave
 - [ ] FAAC/Opus MXU2 optimization using mxu2_dsp.h kernels
 - [ ] Widening / reduction optabs: `vec_unpacks_lo/hi`, `vec_unpacku_lo/hi`,

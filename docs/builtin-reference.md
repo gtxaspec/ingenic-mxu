@@ -42,6 +42,12 @@ v16i8 v = __builtin_mxu2_la1qx(ptr, reg_offset);  // aligned, reg offset
 __builtin_mxu2_su1q(v, ptr, offset);              // unaligned store
 __builtin_mxu2_su1qx(v, ptr, reg_offset);
 __builtin_mxu2_sa1q(v, ptr, offset);              // aligned store
+```
+
+All load/store builtin offsets are RAW BYTES (T20-verified), not 16-byte
+indices; the immediate field is 10-bit signed, so +/-512 bytes. The shim's
+`mxu2_lu1q(ptr, idx)` API counts 16-byte blocks and scales internally.
+```c
 __builtin_mxu2_sa1qx(v, ptr, reg_offset);
 ```
 
