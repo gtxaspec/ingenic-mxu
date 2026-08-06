@@ -6,13 +6,13 @@ SIMD intrinsics and toolchain patches for Ingenic MIPS processors.
 |-----------|-----|-------|------|--------|
 | `mxu2_shim.h` | MXU2 | 128-bit | T20, T21, T23, T30, T31, T32 | 368 ops, 431 tests |
 | `mxu3_shim.h` | MXU3 | 512-bit | T40, T41 | 498 ops, 455 tests |
-| GCC 15.2 + binutils 2.44 patches | MXU2 | 128-bit | T20, T21, T23, T30, T31, T32 | 382 tests, all pass |
+| GCC 15.2/16.1 + binutils 2.44/2.45.1 patches | MXU2 | 128-bit | T20, T21, T23, T30, T31, T32 | 382 tests, all pass |
 
 MXU2 and MXU3 are completely separate ISAs -- MXU2 instructions SIGILL on XBurst2 and vice versa.
 
 ---
 
-## Native toolchain (GCC 15.2 + binutils 2.44)
+## Native toolchain (GCC 15.2/16.1 + binutils 2.44/2.45.1)
 
 The `patches/` directory contains toolchain patches that add native MXU2 support to GCC and binutils. With these patches, the compiler manages vector registers directly -- no inline assembly needed.
 
@@ -59,9 +59,12 @@ ssh root@<device> /tmp/test_mxu2
 | File | Target | Description |
 |------|--------|-------------|
 | `patches/0001-add-ingenic-mxu2-support.patch` | binutils 2.44 | Assembler, disassembler, 364 opcodes |
-| `patches/0001-add-ingenic-mxu2-backend.patch` | GCC 15.2.0 | Backend, patterns, 382 builtins |
+| `patches/0001-add-ingenic-mxu2-support-2.45.1.patch` | binutils 2.45.1 | Same, rebased; MXU2 rows precede UDI so lu1q/su1q disassemble correctly |
+| `patches/0001-add-ingenic-mxu2-backend.patch` | GCC 15.2.0 / 16.1.0 | Backend, patterns, 382 builtins (applies to both versions unchanged) |
 
-Copy to `package/all-patches/binutils/2.44/` and `package/all-patches/gcc/15.2.0/` in your buildroot tree.
+Copy to `package/all-patches/binutils/2.44/` and `package/all-patches/gcc/15.2.0/` in your buildroot tree (gcc16 toolchains: `binutils/2.45.1/` and `gcc/16.1.0/`).
+
+GCC >= 16 note: build the test suites with `-flax-vector-conversions` (gcc 16 tightened vector element-type conversions). The shim's `-mmxu2` delegate mode has API drift (missing `mxu2_mtcpuu_w` delegate, `dadds`/`dsubs` arity) - use the shim without `-mmxu2`, or native builtins directly, until fixed.
 
 **For upstream submission** (split patch series):
 
